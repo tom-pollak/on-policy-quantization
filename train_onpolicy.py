@@ -59,6 +59,7 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
     student_model = AutoModelForCausalLM.from_pretrained(
         conf.student_model_name,
         quantization_config=bnb_config,
+        device_map={"": torch.cuda.current_device()},
     )
 
     lora_config = LoraConfig(
