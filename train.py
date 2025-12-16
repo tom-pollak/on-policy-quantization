@@ -30,7 +30,7 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
     dtype = torch.bfloat16 if conf.mixed_precision == "bf16" else torch.float16
 
     # Tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(conf.teacher_model_name, use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(conf.model_name, use_fast=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
@@ -42,7 +42,7 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
 
     # Teacher model
     teacher_model = AutoModelForCausalLM.from_pretrained(
-        conf.teacher_model_name,
+        conf.model_name,
         dtype=dtype,
         trust_remote_code=True,
     )
@@ -57,7 +57,7 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
 
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     student_model = AutoModelForCausalLM.from_pretrained(
-        conf.student_model_name,
+        conf.model_name,
         quantization_config=bnb_config,
         device_map={"": local_rank},
     )

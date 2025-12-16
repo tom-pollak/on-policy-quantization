@@ -52,15 +52,15 @@ def main(conf: EvalConfig = EvalConfig()) -> None:
         project="on-policy-distillation", name="eval_comparison", job_type="eval"
     )
 
-    dtype = torch.bfloat16 if conf.bf16 else torch.float16
-    tokenizer = AutoTokenizer.from_pretrained(conf.teacher_model_name, use_fast=True)
+    dtype = torch.bfloat16
+    tokenizer = AutoTokenizer.from_pretrained(conf.model_name, use_fast=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
     models = {
-        "teacher": (conf.teacher_model_name, False),
-        "student_ptq_4bit": (conf.ptq_student_name, True),
-        "student_offpolicy": (conf.kd_student_dir, True),
+        "teacher": (conf.model_name, False),
+        "student_ptq_4bit": (conf.model_name, True),
+        "student_kd": (conf.kd_student_dir, True),
         "student_onpolicy": (conf.onpolicy_student_dir, True),
     }
 
@@ -69,10 +69,8 @@ def main(conf: EvalConfig = EvalConfig()) -> None:
     table = wandb.Table(columns=["model"] + DEFAULT_TASKS)
     for name, (path, quantize) in models.items():
         model = load_model(path, dtype, quantize_4bit=quantize)
-
         downstream = run_lm_eval(model, tokenizer, DEFAULT_TASKS)
 
-        # log
         print(
             f"{name:25s} | "
             + " | ".join(f"{downstream[t]:8.4f}" for t in DEFAULT_TASKS)
