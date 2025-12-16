@@ -1,4 +1,7 @@
+import os
 import random
+
+os.environ["WANDB_PROJECT"] = "on-policy-distillation"
 
 import torch
 import torch.nn.functional as F
@@ -179,7 +182,8 @@ def main(conf: KDBaselineConfig) -> None:
         save_total_limit=2,
         bf16=conf.bf16,
         ddp_find_unused_parameters=False,
-        report_to=["none"],
+        report_to=["wandb"],
+        run_name="baseline",
     )
 
     trainer = KDTrainer(

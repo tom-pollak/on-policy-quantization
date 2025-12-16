@@ -59,7 +59,12 @@ def main(conf: OnPolicyKDConfig) -> None:
     # -----------------------------
     # Setup & seeding
     # -----------------------------
-    accelerator = Accelerator()
+    accelerator = Accelerator(log_with="wandb")
+    accelerator.init_trackers(
+        "on-policy-distillation",
+        config=dict(conf),
+        init_kwargs={"wandb": {"name": "on_policy"}},
+    )
     device = accelerator.device
     torch.backends.cuda.matmul.allow_tf32 = True
 
@@ -260,8 +265,10 @@ def main(conf: OnPolicyKDConfig) -> None:
                 scheduler.step()
                 optimizer.zero_grad(set_to_none=True)
 
-            if accelerator.is_main_process and global_step % 50 == 0:
-                print(f"step {global_step} | loss {loss.item():.4f}")
+            if global_step % 50 == 0:
+                accelerator.log({"loss": loss.item()}, step=global_step)
+                if accelerator.is_main_process:
+                    print(f"step {global_step} | loss {loss.item():.4f}")
 
             global_step += 1
 
@@ -271,6 +278,7 @@ def main(conf: OnPolicyKDConfig) -> None:
     if accelerator.is_main_process:
         tokenizer.save_pretrained(str(conf.output_dir))
         print(f"Saved on-policy KD student to {conf.output_dir}")
+    accelerator.end_training()
 
 
 if __name__ == "__main__":
