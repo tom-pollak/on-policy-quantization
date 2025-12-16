@@ -2,6 +2,7 @@ import os
 import random
 
 os.environ["WANDB_PROJECT"] = "on-policy-distillation"
+os.environ["TRL_EXPERIMENTAL_SILENCE"] = "1"
 
 import torch
 from datasets import load_dataset
