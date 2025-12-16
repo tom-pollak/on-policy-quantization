@@ -15,8 +15,8 @@ class OnPolicyKDConfig(CommonModelConfig):
 
     # batching / optimisation
     per_device_train_batch_size: int = 4
-    per_device_eval_batch_size: int = 18
-    gradient_accumulation_steps: int = 1
+    per_device_eval_batch_size: int = 8
+    gradient_accumulation_steps: int = 2
     learning_rate: float = 1.0e-5
     weight_decay: float = 0.0
     warmup_ratio: float = 0.03
