@@ -98,7 +98,6 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
         beta=1.0,  # 1.0 = reverse KL (mode-seeking), 0.0 = forward KL
         temperature=1.0,
         max_new_tokens=conf.max_new_tokens,
-        max_seq_length=conf.max_seq_length,
     )
 
     trainer = GKDTrainer(
