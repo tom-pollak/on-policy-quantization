@@ -33,16 +33,6 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
     if conf.max_train_samples is not None:
         raw_dataset = raw_dataset.select(range(conf.max_train_samples))
 
-    def extract_prompt(example):
-        messages = example["messages"]
-        # Drop last assistant/model message if present
-        if len(messages) >= 2 and messages[-1]["role"] in ("assistant", "model"):
-            messages = messages[:-1]
-        return {"messages": messages}
-
-    raw_dataset = raw_dataset.map(extract_prompt)
-    raw_dataset = raw_dataset.filter(lambda x: len(x["messages"]) > 0)
-
     # Teacher model
     teacher_model = AutoModelForCausalLM.from_pretrained(
         conf.teacher_model_name,
