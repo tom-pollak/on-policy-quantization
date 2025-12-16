@@ -133,7 +133,7 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
         bf16=conf.mixed_precision == "bf16",
         fp16=conf.mixed_precision == "fp16",
         report_to=["wandb"],
-        run_name="on_policy_gkd",
+        run_name=f"{conf.model_name.split('/', 1)[1]}__{conf.lmbda}",
         ddp_find_unused_parameters=False,
         # TODO: revisit gradient checkpointing - DDP + LoRA + checkpointing causes
         # "parameter marked ready twice" error even with use_reentrant=False.
