@@ -46,6 +46,13 @@ def run_lm_eval(model, tokenizer, task_list: list[str], num_fewshot: int = 0) ->
     }
 
 
+def do_log(table, name, res):
+    print(f"{name:25s} | " + " | ".join(f"{res[t]:8.4f}" for t in DEFAULT_TASKS))
+    table.add_data(name, *[res[t] for t in DEFAULT_TASKS])
+    for task in DEFAULT_TASKS:
+        wandb.summary[f"{name}/{task}"] = res[task]
+
+
 @validate_call
 def main(conf: EvalConfig = EvalConfig()) -> None:
     wandb.init(
@@ -64,21 +71,13 @@ def main(conf: EvalConfig = EvalConfig()) -> None:
         "student_onpolicy": (conf.onpolicy_student_dir, True),
     }
 
-    header = f"{'model':25s} | " + " | ".join(f"{t[:8]:>8s}" for t in DEFAULT_TASKS)
-    print(header)
+    # header
+    print(f"{'model':25s} | " + " | ".join(f"{t[:8]:>8s}" for t in DEFAULT_TASKS))
     table = wandb.Table(columns=["model"] + DEFAULT_TASKS)
     for name, (path, quantize) in models.items():
         model = load_model(path, dtype, quantize_4bit=quantize)
-        downstream = run_lm_eval(model, tokenizer, DEFAULT_TASKS)
-
-        print(
-            f"{name:25s} | "
-            + " | ".join(f"{downstream[t]:8.4f}" for t in DEFAULT_TASKS)
-        )
-        table.add_data(name, *[downstream[t] for t in DEFAULT_TASKS])
-        for task in DEFAULT_TASKS:
-            wandb.summary[f"{name}/{task}"] = downstream[task]
-
+        res = run_lm_eval(model, tokenizer, DEFAULT_TASKS)
+        do_log(table, name, res)
         del model
         torch.cuda.empty_cache()
 
