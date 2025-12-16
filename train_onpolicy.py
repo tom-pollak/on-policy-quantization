@@ -1,20 +1,20 @@
 import math
 import random
-from typing import List, Dict, Any
 
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
+from accelerate import Accelerator
 from datasets import load_dataset
+from peft import LoraConfig, get_peft_model
 from pydantic import validate_call
 from pydantic_config import parse_argv
+from torch.utils.data import DataLoader
 from transformers import (
-    AutoTokenizer,
     AutoModelForCausalLM,
+    AutoTokenizer,
     BitsAndBytesConfig,
     get_linear_schedule_with_warmup,
 )
-from peft import LoraConfig, get_peft_model
 
 from config import OnPolicyKDConfig
 
@@ -22,7 +22,7 @@ from config import OnPolicyKDConfig
 def reverse_kl_on_generated(
     student_logits: torch.Tensor,
     teacher_logits: torch.Tensor,
-    prompt_lengths: List[int],
+    prompt_lengths: list[int],
     temperature: float,
 ) -> torch.Tensor:
     """
@@ -59,7 +59,8 @@ def main(conf: OnPolicyKDConfig) -> None:
     # -----------------------------
     # Setup & seeding
     # -----------------------------
-    device = torch.device("cuda")
+    accelerator = Accelerator()
+    device = accelerator.device
     torch.backends.cuda.matmul.allow_tf32 = True
 
     random.seed(conf.seed)
@@ -85,7 +86,7 @@ def main(conf: OnPolicyKDConfig) -> None:
             return messages[:-1]
         return messages
 
-    def collate_prompts(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def collate_prompts(batch):
         prompts_texts = []
         prompt_msg_lists = []
 
@@ -185,6 +186,11 @@ def main(conf: OnPolicyKDConfig) -> None:
         optimizer, num_warmup_steps=warmup_steps, num_training_steps=t_total
     )
 
+    # Prepare for distributed training
+    student_model, optimizer, prompt_loader, scheduler = accelerator.prepare(
+        student_model, optimizer, prompt_loader, scheduler
+    )
+
     # -----------------------------
     # Training loop
     # -----------------------------
@@ -216,7 +222,7 @@ def main(conf: OnPolicyKDConfig) -> None:
                 sequences = gen_outputs.sequences  # [B, L_full]
 
             # Compute prompt lengths in token space
-            prompt_lengths: List[int] = []
+            prompt_lengths: list[int] = []
             for i in range(sequences.size(0)):
                 prompt_ids = prompt_input_ids[i]
                 pl = (prompt_ids != tokenizer.pad_token_id).sum().item()
@@ -246,7 +252,7 @@ def main(conf: OnPolicyKDConfig) -> None:
                 student_logits, teacher_logits, prompt_lengths, temperature=1.0
             )
             loss = loss / conf.gradient_accumulation_steps
-            loss.backward()
+            accelerator.backward(loss)
 
             if (global_step + 1) % conf.gradient_accumulation_steps == 0:
                 torch.nn.utils.clip_grad_norm_(trainable_params, 1.0)
@@ -254,14 +260,17 @@ def main(conf: OnPolicyKDConfig) -> None:
                 scheduler.step()
                 optimizer.zero_grad(set_to_none=True)
 
-            if global_step % 50 == 0:
+            if accelerator.is_main_process and global_step % 50 == 0:
                 print(f"step {global_step} | loss {loss.item():.4f}")
 
             global_step += 1
 
-    student_model.save_pretrained(str(conf.output_dir))
-    tokenizer.save_pretrained(str(conf.output_dir))
-    print(f"Saved on-policy KD student to {conf.output_dir}")
+    accelerator.wait_for_everyone()
+    unwrapped_model = accelerator.unwrap_model(student_model)
+    unwrapped_model.save_pretrained(str(conf.output_dir))
+    if accelerator.is_main_process:
+        tokenizer.save_pretrained(str(conf.output_dir))
+        print(f"Saved on-policy KD student to {conf.output_dir}")
 
 
 if __name__ == "__main__":

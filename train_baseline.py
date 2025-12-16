@@ -1,5 +1,4 @@
 import random
-from typing import Any, Dict
 
 import torch
 import torch.nn.functional as F
@@ -49,7 +48,7 @@ def main(conf: KDBaselineConfig) -> None:
     else:
         raw_eval = raw_dataset
 
-    def format_example(example: Dict[str, Any]) -> Dict[str, Any]:
+    def format_example(example):
         text = tokenizer.apply_chat_template(
             example["messages"],
             tokenize=False,
