@@ -1,3 +1,4 @@
+from pathlib import Path
 import torch
 import wandb
 from lm_eval import evaluator
@@ -5,10 +6,14 @@ from lm_eval.models.huggingface import HFLM
 from pydantic import validate_call
 from pydantic_config import parse_argv
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from pydantic_config import BaseConfig
 
-from config import EvalConfig
 
-DEFAULT_TASKS = ["hellaswag", "arc_easy", "arc_challenge", "winogrande", "mmlu"]
+class EvalConfig(BaseConfig):
+    model_name: str = "Qwen/Qwen2.5-7B-Instruct"
+    kd_student_dir: Path = Path("./qwen_kd_baseline")
+    onpolicy_student_dir: Path = Path("./qwen_onpolicy_merged")  # merged + re-quantized
+    tasks: list[str] = ["hellaswag", "arc_easy", "arc_challenge", "winogrande", "mmlu"]
 
 
 def load_model(path: str, dtype: torch.dtype, quantize_4bit: bool = False):
@@ -29,8 +34,16 @@ def load_model(path: str, dtype: torch.dtype, quantize_4bit: bool = False):
     )
 
 
-def run_lm_eval(model, tokenizer, task_list: list[str], num_fewshot: int = 0) -> dict:
+def run_lm_eval(
+    path,
+    dtype,
+    quantize,
+    tokenizer,
+    task_list: list[str],
+    num_fewshot: int = 0,
+) -> dict:
     """Run lm-evaluation-harness on specified tasks."""
+    model = load_model(path, dtype, quantize_4bit=quantize)
     lm = HFLM(pretrained=model, tokenizer=tokenizer)
     results = evaluator.simple_evaluate(
         model=lm,
@@ -38,6 +51,7 @@ def run_lm_eval(model, tokenizer, task_list: list[str], num_fewshot: int = 0) ->
         num_fewshot=num_fewshot,
         batch_size="auto",
     )
+    del model
     return {
         task: results["results"][task].get(
             "acc,none", results["results"][task].get("acc_norm,none")
@@ -46,10 +60,10 @@ def run_lm_eval(model, tokenizer, task_list: list[str], num_fewshot: int = 0) ->
     }
 
 
-def do_log(table, name, res):
-    print(f"{name:25s} | " + " | ".join(f"{res[t]:8.4f}" for t in DEFAULT_TASKS))
-    table.add_data(name, *[res[t] for t in DEFAULT_TASKS])
-    for task in DEFAULT_TASKS:
+def do_log(tasks, table, name, res):
+    print(f"{name:25s} | " + " | ".join(f"{res[t]:8.4f}" for t in tasks))
+    table.add_data(name, *[res[t] for t in tasks])
+    for task in tasks:
         wandb.summary[f"{name}/{task}"] = res[task]
 
 
@@ -72,13 +86,11 @@ def main(conf: EvalConfig = EvalConfig()) -> None:
     }
 
     # header
-    print(f"{'model':25s} | " + " | ".join(f"{t[:8]:>8s}" for t in DEFAULT_TASKS))
-    table = wandb.Table(columns=["model"] + DEFAULT_TASKS)
+    print(f"{'model':25s} | " + " | ".join(f"{t[:8]:>8s}" for t in conf.tasks))
+    table = wandb.Table(columns=["model"] + conf.tasks)
     for name, (path, quantize) in models.items():
-        model = load_model(path, dtype, quantize_4bit=quantize)
-        res = run_lm_eval(model, tokenizer, DEFAULT_TASKS)
-        do_log(table, name, res)
-        del model
+        res = run_lm_eval(path, dtype, quantize, tokenizer, conf.tasks)
+        do_log(conf.tasks, table, name, res)
         torch.cuda.empty_cache()
 
     wandb.log({"eval_results": table})
