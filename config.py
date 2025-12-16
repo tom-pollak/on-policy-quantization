@@ -10,7 +10,8 @@ class CommonModelConfig(BaseConfig):
 
     # sequence / precision
     max_seq_length: int = 2048
-    bf16: bool = True
+    mixed_precision: str = "bf16"  # "no", "fp16", "bf16"
+    dynamo_backend: str = "inductor"  # "no", "inductor", etc.
     device_map: str = (
         "auto"  # used in baseline/eval; on-policy uses single-GPU by default
     )

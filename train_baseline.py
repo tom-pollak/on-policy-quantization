@@ -21,7 +21,7 @@ from config import KDBaselineConfig
 
 
 @validate_call
-def main(conf: KDBaselineConfig) -> None:
+def main(conf: KDBaselineConfig = KDBaselineConfig()) -> None:
     # -----------------------------
     # Seeding
     # -----------------------------
@@ -73,7 +73,7 @@ def main(conf: KDBaselineConfig) -> None:
     # Models
     # -----------------------------
     device_map = conf.device_map
-    dtype = torch.bfloat16 if conf.bf16 else torch.float16
+    dtype = torch.bfloat16 if conf.mixed_precision == "bf16" else torch.float16
 
     teacher_model = AutoModelForCausalLM.from_pretrained(
         conf.teacher_model_name,
@@ -180,10 +180,13 @@ def main(conf: KDBaselineConfig) -> None:
         eval_steps=conf.eval_steps,
         save_steps=conf.save_steps,
         save_total_limit=2,
-        bf16=conf.bf16,
+        bf16=conf.mixed_precision == "bf16",
+        fp16=conf.mixed_precision == "fp16",
         ddp_find_unused_parameters=False,
         report_to=["wandb"],
         run_name="baseline",
+        torch_compile=conf.dynamo_backend != "no",
+        torch_compile_backend=conf.dynamo_backend if conf.dynamo_backend != "no" else None,
     )
 
     trainer = KDTrainer(

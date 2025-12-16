@@ -51,7 +51,7 @@ def evaluate_model(model, name: str, dataloader, device) -> Dict[str, Any]:
 
 
 @validate_call
-def main(conf: EvalConfig) -> None:
+def main(conf: EvalConfig = EvalConfig()) -> None:
     dtype = torch.bfloat16 if conf.bf16 else torch.float16
 
     tokenizer = AutoTokenizer.from_pretrained(conf.teacher_model_name, use_fast=True)

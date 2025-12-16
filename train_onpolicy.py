@@ -55,11 +55,16 @@ def reverse_kl_on_generated(
 
 
 @validate_call
-def main(conf: OnPolicyKDConfig) -> None:
+def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
     # -----------------------------
     # Setup & seeding
     # -----------------------------
-    accelerator = Accelerator(log_with="wandb")
+    accelerator = Accelerator(
+        log_with="wandb",
+        mixed_precision=conf.mixed_precision,
+        dynamo_backend=conf.dynamo_backend,
+        gradient_accumulation_steps=conf.gradient_accumulation_steps,
+    )
     accelerator.init_trackers(
         "on-policy-distillation",
         config=dict(conf),
@@ -72,7 +77,7 @@ def main(conf: OnPolicyKDConfig) -> None:
     torch.manual_seed(conf.seed)
     torch.cuda.manual_seed_all(conf.seed)
 
-    dtype = torch.bfloat16 if conf.bf16 else torch.float16
+    dtype = torch.bfloat16 if conf.mixed_precision == "bf16" else torch.float16
 
     # -----------------------------
     # Tokenizer & dataset
