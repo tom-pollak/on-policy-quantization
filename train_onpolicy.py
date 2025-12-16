@@ -41,6 +41,7 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
         return {"messages": messages}
 
     raw_dataset = raw_dataset.map(extract_prompt)
+    raw_dataset = raw_dataset.filter(lambda x: len(x["messages"]) > 0)
 
     # Teacher model
     teacher_model = AutoModelForCausalLM.from_pretrained(
