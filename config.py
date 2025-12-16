@@ -28,6 +28,14 @@ class CommonModelConfig(BaseConfig):
     weight_decay: float = 0.0
     warmup_ratio: float = 0.03
 
+    # logging / ckpts (shared)
+    logging_steps: int = 1
+    save_steps: int = 100
+    eval_steps: int = 100
+
+    # KD shared
+    temperature: float = 1.0
+
     # misc
     seed: int = 42
 
@@ -36,15 +44,10 @@ class KDBaselineConfig(CommonModelConfig):
     # training length
     num_train_epochs: float = 1.0
 
-    # logging / ckpts
-    logging_steps: int = 1
-    save_steps: int = 100
-    eval_steps: int = 100
     output_dir: Path = Path("./qwen_kd_baseline")
 
     # KD-specific
     kd_alpha: float = 0.5  # weight on supervised CE; 1 - alpha on KL
-    temperature: float = 1.0
 
 
 class OnPolicyKDConfig(CommonModelConfig):

@@ -82,8 +82,8 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
         learning_rate=conf.learning_rate,
         max_steps=conf.max_train_steps,
         warmup_ratio=conf.warmup_ratio,
-        logging_steps=50,
-        save_steps=500,
+        logging_steps=conf.logging_steps,
+        save_steps=conf.save_steps,
         bf16=conf.mixed_precision == "bf16",
         fp16=conf.mixed_precision == "fp16",
         report_to=["wandb"],
@@ -95,7 +95,7 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
         gradient_checkpointing=False,
         lmbda=1.0,  # 1.0 = pure on-policy (generate from student)
         beta=1.0,  # 1.0 = reverse KL (mode-seeking), 0.0 = forward KL
-        temperature=1.0,
+        temperature=conf.temperature,
         max_new_tokens=conf.max_new_tokens,
     )
 
