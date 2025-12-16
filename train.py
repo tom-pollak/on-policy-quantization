@@ -14,7 +14,6 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
-    TrainerCallback,
 )
 from trl.experimental.gkd import GKDConfig, GKDTrainer
 
