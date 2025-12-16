@@ -21,43 +21,6 @@ from trl.experimental.gkd import GKDConfig, GKDTrainer
 from config import OnPolicyKDConfig
 
 
-class PerplexityCallback(TrainerCallback):
-    """Logs teacher and student perplexity on eval set."""
-
-    def on_evaluate(self, args, state, control, model, **kwargs):
-        metrics = kwargs.get("metrics", {})
-        if "eval_loss" in metrics:
-            student_ppl = math.exp(metrics["eval_loss"])
-            metrics["eval_student_ppl"] = student_ppl
-
-        # Compute teacher perplexity
-        teacher_model = getattr(kwargs.get("trainer", None), "teacher_model", None)
-        eval_dataloader = kwargs.get("eval_dataloader")
-        if teacher_model is not None and eval_dataloader is not None:
-            teacher_model.eval()
-            total_loss = 0.0
-            total_tokens = 0
-            with torch.no_grad():
-                for batch in eval_dataloader:
-                    batch = {k: v.to(teacher_model.device) for k, v in batch.items()}
-                    outputs = teacher_model(
-                        input_ids=batch["input_ids"],
-                        attention_mask=batch["attention_mask"],
-                        labels=batch.get("labels", batch["input_ids"]),
-                    )
-                    num_tokens = (
-                        (batch.get("labels", batch["input_ids"]) != -100).sum().item()
-                    )
-                    total_loss += outputs.loss.item() * num_tokens
-                    total_tokens += num_tokens
-            if total_tokens > 0:
-                teacher_loss = total_loss / total_tokens
-                metrics["eval_teacher_ppl"] = math.exp(teacher_loss)
-                metrics["eval_ppl_gap"] = (
-                    metrics.get("eval_student_ppl", 0) - metrics["eval_teacher_ppl"]
-                )
-
-
 @validate_call
 def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
     random.seed(conf.seed)
@@ -152,7 +115,6 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         processing_class=tokenizer,
-        callbacks=[PerplexityCallback()],
     )
 
     trainer.train()
