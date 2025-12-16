@@ -13,6 +13,7 @@ DEFAULT_TASKS = ["hellaswag", "arc_easy", "arc_challenge", "winogrande", "mmlu"]
 
 def load_model(path: str, dtype: torch.dtype, quantize_4bit: bool = False):
     """Load a model, optionally with 4-bit quantization."""
+    # TODO load lora model, merge before quantize
     if quantize_4bit:
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
