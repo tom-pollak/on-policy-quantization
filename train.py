@@ -33,7 +33,7 @@ def main(conf: TrainConfig) -> None:
         tokenizer.pad_token = tokenizer.eos_token
 
     dataset = load_dataset(conf.dataset_name, split="train")
-    dataset = dataset.filter(lambda x: len(x.get("prompt", "")) > 0)
+    dataset = dataset.filter(lambda x: len(x.get("messages", "")) > 0)
 
     # Teacher
     teacher_model = AutoModelForCausalLM.from_pretrained(
