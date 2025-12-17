@@ -62,10 +62,8 @@ def run_lm_eval(
 
 
 @validate_call
-def main(conf: EvalConfig = EvalConfig()) -> None:
-    wandb.init(
-        project="on-policy-distillation", name="eval_comparison", job_type="eval"
-    )
+def main(conf: EvalConfig) -> None:
+    wandb.init(project=conf.wandb_project, name="eval_comparison", job_type="eval")
 
     dtype = torch.bfloat16
     tokenizer = AutoTokenizer.from_pretrained(conf.model_name, use_fast=True)
@@ -115,4 +113,4 @@ def main(conf: EvalConfig = EvalConfig()) -> None:
 
 
 if __name__ == "__main__":
-    main(**parse_argv())
+    main(EvalConfig(**parse_argv()))

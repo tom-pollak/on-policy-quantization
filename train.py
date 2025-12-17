@@ -1,9 +1,9 @@
 import os
 import random
 
-os.environ["WANDB_PROJECT"] = "on-policy-distillation"
 os.environ["TRL_EXPERIMENTAL_SILENCE"] = "1"
 
+import wandb
 import torch
 from datasets import load_dataset
 from peft import LoraConfig, get_peft_model
@@ -17,10 +17,13 @@ from config import TrainConfig
 
 
 @validate_call
-def main(conf: TrainConfig = TrainConfig()) -> None:
+def main(conf: TrainConfig) -> None:
     random.seed(conf.seed)
     torch.manual_seed(conf.seed)
     torch.cuda.manual_seed_all(conf.seed)
+
+    run_name = conf.output_dir.stem
+    wandb.init(project=conf.wandb_project, name=run_name, job_type="train")
 
     dtype = torch.bfloat16 if conf.mixed_precision == "bf16" else torch.float16
 
@@ -75,7 +78,7 @@ def main(conf: TrainConfig = TrainConfig()) -> None:
         # torch_compile_mode="max-autotune",
         report_to=["wandb"],
         ddp_find_unused_parameters=False,
-        run_name=conf.output_dir.stem,
+        run_name=run_name,
         # TODO: revisit gradient checkpointing - DDP + LoRA + checkpointing causes
         # "parameter marked ready twice" error even with use_reentrant=False.
         gradient_checkpointing=False,

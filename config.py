@@ -12,6 +12,7 @@ class SharedConfig(BaseConfig):
 
     model_name: str = "Qwen/Qwen2.5-7B-Instruct"
     quant_type: Literal["int4", "nvfp4"] = "int4"  # nvfp4 requires B200 GPU
+    wandb_project: str = "on-policy-distillation"
 
     def get_quant_config(self):
         """Get the appropriate torchao quantization config."""
@@ -71,6 +72,7 @@ class TrainConfig(SharedConfig):
                 "dynamo_backend",
                 "seed",
                 "quant_type",
+                "wandb_project",
             ]
         )
 
