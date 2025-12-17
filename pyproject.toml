@@ -17,6 +17,7 @@ dependencies = [
     "trl>=0.26.1",
     "wandb>=0.23.1",
     "torchao",
+    "fbgemm-gpu-genai>=1.4.2",
 ]
 
 [[tool.uv.index]]
