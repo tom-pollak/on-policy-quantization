@@ -1,7 +1,7 @@
 import os
-import random
 
 os.environ["TRL_EXPERIMENTAL_SILENCE"] = "1"
+
 import torch
 from datasets import load_dataset
 from peft import LoraConfig, get_peft_model
@@ -16,7 +16,6 @@ from config import TrainConfig
 
 @validate_call
 def main(conf: TrainConfig) -> None:
-    random.seed(conf.seed)
     torch.manual_seed(conf.seed)
     torch.cuda.manual_seed_all(conf.seed)
 
