@@ -15,13 +15,13 @@ torch transformers datasets accelerate bitsandbytes peft scipy pydantic pydantic
 ### 1. Off-policy KD baseline
 
 ```bash
-uv run accelerate launch train.py --lmbda 0 --output_dir qwen_kd_baseline
+uv run accelerate launch train.py --lmbda 0 --output_dir qwen_kd_baseline --quant_type int4
 ```
 
 ### 2. On-policy KD
 
 ```bash
-uv run accelerate launch train.py --lmbda 1 --output_dir qwen_onpolicy_kd
+uv run accelerate launch train.py --lmbda 1 --output_dir qwen_onpolicy_kd --quant_type int4
 ```
 
 ### 3. Perplexity comparison (teacher vs PTQ vs KD vs on-policy KD)
