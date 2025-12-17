@@ -7,8 +7,7 @@ from datasets import load_dataset
 from peft import LoraConfig, get_peft_model
 from pydantic import validate_call
 from pydantic_config import parse_argv
-from torchao.quantization import quantize_
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from trl.experimental.gkd import GKDConfig, GKDTrainer
 
 from config import TrainConfig
@@ -39,12 +38,16 @@ def main(conf: TrainConfig) -> None:
         trust_remote_code=True,
     )
 
-    # Student model (QAT fake quantization + LoRA)
+    # Student model (4-bit quantization + LoRA)
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=dtype,
+        bnb_4bit_quant_type="fp4",
+    )
     student_model = AutoModelForCausalLM.from_pretrained(
         conf.model_name,
-        dtype=dtype,
+        quantization_config=bnb_config,
     )
-    quantize_(student_model, conf.get_qat_config())
 
     lora_config = LoraConfig(
         r=16,
