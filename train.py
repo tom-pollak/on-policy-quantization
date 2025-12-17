@@ -22,6 +22,8 @@ def main(conf: TrainConfig) -> None:
     os.environ["WANDB_JOB_TYPE"] = "train"
 
     dtype = torch.bfloat16 if conf.mixed_precision == "bf16" else torch.float16
+    local_rank = int(os.environ.get("LOCAL_RANK", 0))
+    device_map = {"": local_rank}
 
     # Tokenizer
     tokenizer = AutoTokenizer.from_pretrained(conf.model_name, use_fast=True)
@@ -47,6 +49,7 @@ def main(conf: TrainConfig) -> None:
     student_model = AutoModelForCausalLM.from_pretrained(
         conf.model_name,
         quantization_config=bnb_config,
+        device_map=device_map,
     )
 
     lora_config = LoraConfig(
