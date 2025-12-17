@@ -44,7 +44,7 @@ def main(conf: TrainConfig) -> None:
         conf.model_name,
         dtype=dtype,
     )
-    quantize_(student_model, conf.get_quant_config())
+    quantize_(student_model, conf.get_qat_config())
 
     lora_config = LoraConfig(
         r=16,
@@ -72,7 +72,7 @@ def main(conf: TrainConfig) -> None:
         torch_compile_backend="inductor",
         # torch_compile_mode="max-autotune",
         report_to=["wandb"],
-        fsdp="shard_grad_op",
+        ddp_find_unused_parameters=False,
         run_name=conf.output_dir.stem,
         **conf.trainer_kwargs(),
     )
