@@ -41,7 +41,6 @@ class OnPolicyKDConfig(BaseConfig):
     # logging
     logging_steps: int = 1
     save_steps: int = 100
-    eval_steps: int = 100
 
     # sampling
     temperature: float = 1.0
@@ -71,11 +70,7 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    # Dataset - split into train/eval (fixed seed for reproducible eval set)
-    raw_dataset = load_dataset(conf.dataset_name, split="train")
-    split_dataset = raw_dataset.train_test_split(test_size=0.01, seed=42)
-    train_dataset = split_dataset["train"]
-    eval_dataset = split_dataset["test"]
+    dataset = load_dataset(conf.dataset_name, split="train")
 
     # Teacher model
     teacher_model = AutoModelForCausalLM.from_pretrained(
@@ -118,7 +113,6 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
     student_model = get_peft_model(student_model, lora_config)
     student_model.print_trainable_parameters()
 
-    # GKD training config
     training_args = GKDConfig(
         output_dir=str(conf.output_dir),
         per_device_train_batch_size=conf.per_device_train_batch_size,
@@ -149,8 +143,7 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
         model=student_model,
         teacher_model=teacher_model,
         args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
+        train_dataset=dataset,
         processing_class=tokenizer,
     )
 
