@@ -34,7 +34,7 @@ class TrainConfig(SharedConfig):
     seed: int = 42
 
     # trainer
-    max_steps: int = 250
+    max_steps: int = 500
 
     # batching / optimisation
     per_device_train_batch_size: int = 4
