@@ -36,14 +36,14 @@ def main(conf: TrainConfig) -> None:
     # Teacher model
     teacher_model = AutoModelForCausalLM.from_pretrained(
         conf.model_name,
-        torch_dtype=dtype,
+        dtype=dtype,
         trust_remote_code=True,
     )
 
     # Student model (QAT fake quantization + LoRA)
     student_model = AutoModelForCausalLM.from_pretrained(
         conf.model_name,
-        torch_dtype=dtype,
+        dtype=dtype,
     )
     quantize_(student_model, conf.get_quant_config())
 
