@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 import torch
+from pydantic import field_validator
 from pydantic_config import BaseConfig
 from transformers import AutoModelForCausalLM
 from torchao.quantization import Int4WeightOnlyConfig
@@ -138,8 +139,22 @@ class TrainConfig(SharedConfig):
 class EvalConfig(SharedConfig):
     """Config for model evaluation."""
 
-    lora_paths: list[Path] = [Path("./qwen_kd_baseline"), Path("./qwen_onpolicy_kd")]
-    tasks: list[str] = ["hellaswag", "arc_easy", "arc_challenge", "winogrande", "mmlu"]
+    lora_paths: list[Path] | Path = [
+        Path("./qwen_kd_baseline"),
+        Path("./qwen_onpolicy_kd"),
+    ]
+    tasks: list[str] | str = [
+        "hellaswag",
+        "arc_easy",
+        "arc_challenge",
+        "winogrande",
+        "mmlu",
+    ]
+
+    @field_validator("lora_paths", "tasks", mode="before")
+    @classmethod
+    def ensure_list(cls, v):
+        return [v] if not isinstance(v, list) else v
 
 
 class Tee:
