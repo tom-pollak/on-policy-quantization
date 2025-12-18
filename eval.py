@@ -9,7 +9,7 @@ from peft import PeftModel
 from torchao.quantization import quantize_
 from transformers import BitsAndBytesConfig
 
-from config import EvalConfig
+from config import EvalConfig, Tee
 
 
 def load_model(
@@ -63,51 +63,46 @@ def run_lm_eval(
 
 
 @validate_call
-def main(conf: EvalConfig) -> None:
-    wandb.init(project=conf.wandb_project, name="eval_comparison", job_type="eval")
+def main(cfg: EvalConfig) -> None:
+    wandb.init(project=cfg.wandb_project, name="eval_comparison", job_type="eval")
+    Tee.redirect_stdout_stderr("./eval.log")
 
-    dtype = torch.bfloat16
-    tokenizer = AutoTokenizer.from_pretrained(conf.model_name, use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(cfg.model_name, use_fast=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    quant_config = conf.get_torchao_config()
-
     # header
-    print(f"{'model':25s} | " + " | ".join(f"{t[:8]:>8s}" for t in conf.tasks))
-    table = wandb.Table(columns=["model"] + conf.tasks)
+    print(f"{'model':25s} | " + " | ".join(f"{t[:8]:>8s}" for t in cfg.tasks))
+    table = wandb.Table(columns=["model"] + cfg.tasks)
 
     def eval_and_log(name: str, model):
-        res = run_lm_eval(model, tokenizer, conf.tasks)
+        res = run_lm_eval(model, tokenizer, cfg.tasks)
         # log
-        print(f"{name:25s} | " + " | ".join(f"{res[t]:8.4f}" for t in conf.tasks))
-        table.add_data(name, *[res[t] for t in conf.tasks])
-        for task in conf.tasks:
+        print(f"{name:25s} | " + " | ".join(f"{res[t]:8.4f}" for t in cfg.tasks))
+        table.add_data(name, *[res[t] for t in cfg.tasks])
+        for task in cfg.tasks:
             wandb.summary[f"{name}/{task}"] = res[task]
 
         del model
         torch.cuda.empty_cache()
 
     # Teacher model (unquantized)
-    eval_and_log("teacher", load_model(conf.model_name, dtype))
+    eval_and_log("teacher", cfg.load_model())
 
     # Teacher model (quantized) - PTQ baseline
     eval_and_log(
         "teacher_ptq",
-        load_model(conf.model_name, dtype, quant_config=quant_config),
+        cfg.load_quant_model("ptq"),
     )
 
     # Evaluate each LoRA adapter
-    for lora_path in conf.lora_paths:
-        eval_and_log(
-            lora_path.stem,
-            load_model(
-                str(lora_path),
-                dtype,
-                quant_config=quant_config,
-                base_model=conf.model_name,
-            ),
-        )
+    for lora_path in cfg.lora_paths:
+        model = cfg.load_model()
+        model = PeftModel.from_pretrained(model, lora_path)
+        model = model.merge_and_unload()
+        quantize_(model, cfg._get_torchao_config())
+        eval_and_log(lora_path.stem, model)
+        del model
 
     wandb.log({"eval_results": table})
     wandb.finish()

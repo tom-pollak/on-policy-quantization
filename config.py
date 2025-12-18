@@ -1,34 +1,44 @@
+import os
+import sys
 from pathlib import Path
 from typing import Literal
 
+import torch
 from pydantic_config import BaseConfig
+from transformers import AutoModelForCausalLM
 from torchao.quantization import Int4WeightOnlyConfig
 from torchao.quantization.qat import QATConfig
 from torchao.prototype.mx_formats.inference_workflow import NVFP4WeightOnlyConfig
 from transformers import BitsAndBytesConfig
+from torchao.quantization import quantize_
 
 
 class SharedConfig(BaseConfig):
     """Base config with shared model and quantization settings."""
 
-    model_name: str = "Qwen/Qwen2.5-7B-Instruct"
+    model_name: str = "Qwen/Qwen3-4B-Instruct-2507"
+    mixed_precision: str = "bf16"
     # torchao: int4, nvfp4 (B200 only) | bitsandbytes: bnb_fp4, bnb_nf4
     quant_type: Literal["int4", "nvfp4", "bnb_fp4", "bnb_nf4"] = "bnb_nf4"
     wandb_project: str = "on-policy-distillation"
 
     @property
+    def dtype(self):
+        return torch.bfloat16 if self.mixed_precision == "bf16" else torch.float16
+
+    @property
     def quant_backend(self) -> Literal["torchao", "bitsandbytes"]:
         return "bitsandbytes" if self.quant_type.startswith("bnb_") else "torchao"
 
-    def get_bnb_config(self, dtype):
+    def _get_bnb_config(self):
         assert self.quant_backend == "bitsandbytes"
         return BitsAndBytesConfig(
             load_in_4bit=True,
-            bnb_4bit_compute_dtype=dtype,
+            bnb_4bit_compute_dtype=self.dtype,
             bnb_4bit_quant_type=self.quant_type.removeprefix("bnb_"),
         )
 
-    def get_torchao_config(self):
+    def _get_torchao_config(self):
         """Get torchao quantization config."""
         assert self.quant_backend == "torchao"
         match self.quant_type:
@@ -39,9 +49,36 @@ class SharedConfig(BaseConfig):
             case _:
                 raise ValueError(f"No torchao config for {self.quant_type}")
 
-    def get_torchao_qat_config(self):
-        """Get QAT config for training with fake quantization."""
-        return QATConfig(self.get_torchao_config(), step="prepare")
+    def get_quant_config(self):
+        if self.quant_backend == "bitsandbytes":
+            return self._get_bnb_config()
+        else:
+            return self._get_torchao_config()
+
+    def get_qat_config(self):
+        if self.quant_backend == "bitsandbytes":
+            return self._get_bnb_config()
+        else:
+            return QATConfig(self._get_torchao_config(), step="prepare")
+
+    def load_model(self):
+        return AutoModelForCausalLM.from_pretrained(self.model_name, dtype=self.dtype)
+
+    def load_quant_model(self, method: Literal["qat", "ptq"] = "qat"):
+        quant_config = (
+            self.get_qat_config() if method == "qat" else self.get_quant_config()
+        )
+        if isinstance(quant_config, BitsAndBytesConfig):
+            local_rank = int(os.environ.get("LOCAL_RANK", 0))
+            model = AutoModelForCausalLM.from_pretrained(
+                self.model_name,
+                quantization_config=quant_config,
+                device_map={"": local_rank},
+            )
+        else:  # torchao
+            model = self.load_model()
+            quantize_(model, quant_config)
+        return model
 
 
 class TrainConfig(SharedConfig):
@@ -50,11 +87,10 @@ class TrainConfig(SharedConfig):
     # data
     dataset_name: str = "allenai/tulu-3-sft-mixture"
 
-    # precision
-    mixed_precision: str = "bf16"
-
     # misc
     seed: int = 42
+
+    use_lora: bool = True
 
     # trainer
     max_steps: int = 500
@@ -84,12 +120,12 @@ class TrainConfig(SharedConfig):
         return self.model_dump(
             exclude=[
                 "model_name",
-                "dataset_name",
-                "mixed_precision",
-                "dynamo_backend",
-                "seed",
                 "quant_type",
                 "wandb_project",
+                "dataset_name",
+                "mixed_precision",
+                "seed",
+                "use_lora",
             ]
         )
 
@@ -99,3 +135,23 @@ class EvalConfig(SharedConfig):
 
     lora_paths: list[Path] = [Path("./qwen_kd_baseline"), Path("./qwen_onpolicy_kd")]
     tasks: list[str] = ["hellaswag", "arc_easy", "arc_challenge", "winogrande", "mmlu"]
+
+
+class Tee:
+    def __init__(self, file_path, stream):
+        self.file = open(file_path, "a")
+        self.stream = stream
+
+    def write(self, data):
+        self.stream.write(data)
+        self.file.write(data)
+        self.file.flush()
+
+    def flush(self):
+        self.stream.flush()
+        self.file.flush()
+
+    @classmethod
+    def redirect_stdout_stderr(cls, log_path):
+        sys.stdout = cls(log_path, sys.stdout)
+        sys.stderr = cls(log_path, sys.stderr)
