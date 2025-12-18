@@ -31,7 +31,10 @@ def main(cfg: TrainConfig) -> None:
         tokenizer.pad_token = tokenizer.eos_token
 
     dataset = load_dataset(cfg.dataset_name, split="train")
-    dataset = dataset.filter(lambda x: len(x.get("messages", "")) > 0)
+    dataset = dataset.filter(
+        lambda x: len(x.get("messages", [])) > 0
+        and all(m.get("content", "").strip() for m in x["messages"] if m.get("role") == "user")
+    )
 
     # Models
     teacher = cfg.load_model()
