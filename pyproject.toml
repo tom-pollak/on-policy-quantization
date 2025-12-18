@@ -14,7 +14,7 @@ dependencies = [
     "scipy>=1.16.3",
     "torch>=2.9.1",
     "transformers>=4.57.3",
-    "trl>=0.26.1",
+    "trl>=0.26.2",
     "wandb>=0.23.1",
     "torchao",
     "fbgemm-gpu-genai>=1.4.2",
