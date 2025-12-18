@@ -14,4 +14,4 @@ uv sync
 uv run python eval.py '"$@"'
 '
 
-JOB_NAME=$job_name krun --gpu 8 --priority low --run-command "$cmd"
+JOB_NAME=$job_name krun --gpu 8 --priority low --run-command "bash -c '$cmd'"
