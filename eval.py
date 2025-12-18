@@ -1,5 +1,6 @@
 import torch
 import wandb
+from accelerate import PartialState
 from lm_eval import evaluator
 from lm_eval.models.huggingface import HFLM
 from pydantic import validate_call
@@ -59,24 +60,30 @@ def run_lm_eval(
 
 @validate_call
 def main(cfg: EvalConfig) -> None:
-    wandb.init(project=cfg.wandb_project, name="eval_comparison", job_type="eval")
-    Tee.redirect_stdout_stderr("./eval.log")
+    state = PartialState()
+
+    if state.is_main_process:
+        wandb.init(project=cfg.wandb_project, name="eval_comparison", job_type="eval")
+        Tee.redirect_stdout_stderr("./eval.log")
 
     tokenizer = AutoTokenizer.from_pretrained(cfg.model_name, use_fast=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
     # header
-    print(f"{'model':25s} | " + " | ".join(f"{t[:8]:>8s}" for t in cfg.tasks))
-    table = wandb.Table(columns=["model"] + cfg.tasks)
+    if state.is_main_process:
+        print(f"{'model':25s} | " + " | ".join(f"{t[:8]:>8s}" for t in cfg.tasks))
+    table = (
+        wandb.Table(columns=["model"] + cfg.tasks) if state.is_main_process else None
+    )
 
     def eval_and_log(name: str, model):
         res = run_lm_eval(model, tokenizer, cfg.tasks)
-        # log
-        print(f"{name:25s} | " + " | ".join(f"{res[t]:8.4f}" for t in cfg.tasks))
-        table.add_data(name, *[res[t] for t in cfg.tasks])
-        for task in cfg.tasks:
-            wandb.summary[f"{name}/{task}"] = res[task]
+        if state.is_main_process:
+            print(f"{name:25s} | " + " | ".join(f"{res[t]:8.4f}" for t in cfg.tasks))
+            table.add_data(name, *[res[t] for t in cfg.tasks])
+            for task in cfg.tasks:
+                wandb.summary[f"{name}/{task}"] = res[task]
 
         del model
         torch.cuda.empty_cache()
@@ -99,8 +106,9 @@ def main(cfg: EvalConfig) -> None:
         eval_and_log(lora_path.stem, model)
         del model
 
-    wandb.log({"eval_results": table})
-    wandb.finish()
+    if state.is_main_process:
+        wandb.log({"eval_results": table})
+        wandb.finish()
 
 
 if __name__ == "__main__":
