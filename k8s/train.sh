@@ -3,6 +3,7 @@ set -euo pipefail
 source ~/.bashrc
 
 job_name="$1"
+job_name_safe="${job_name//_/--}"
 shift
 
 cmd="
@@ -16,4 +17,4 @@ uv run accelerate launch train.py --output_dir $job_name $@
 "
 
 cmd_b64=$(printf '%s' "$cmd" | base64)
-JOB_NAME=$job_name krun --gpu 8 --priority low --run-command "echo $cmd_b64 | base64 -d | bash"
+JOB_NAME=$job_name_safe krun --gpu 8 --priority low --run-command "echo $cmd_b64 | base64 -d | bash"
