@@ -27,7 +27,7 @@ empty_prompt_samples = []
 empty_tokenization_samples = []
 
 print("\nScanning for problematic samples...")
-for idx in tqdm(range(int(len(dataset) * 0.1))):
+for idx in tqdm(range(int(len(dataset) * 0.5))):
     sample = dataset[idx]
     messages = sample.get("messages", [])
 
