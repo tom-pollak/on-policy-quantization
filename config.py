@@ -20,7 +20,7 @@ class SharedConfig(BaseConfig):
     model_name: str = "Qwen/Qwen3-4B-Instruct-2507"
     mixed_precision: str = "bf16"
     # torchao: int4, nvfp4 (B200 only) | bitsandbytes: bnb_fp4, bnb_nf4
-    quant_type: Literal["int4", "nvfp4", "bnb_fp4", "bnb_nf4"] = "bnb_nf4"
+    quant_type: Literal["int4", "nvfp4", "bnb_fp4", "bnb_nf4"] = "int4"
     wandb_project: str = "on-policy-distillation"
 
     @property
