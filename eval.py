@@ -123,11 +123,11 @@ if __name__ == "__main__":
     # print(parse_argv())
     raw = {
         "lora_paths": [
-            "qwen_kd_baseline",
-            "qwen_onpolicy_4b_int4",
-            "qwen_kd_half",
-            "qwen_offpolicy_4b_bnb_fp4",
-            "qwen_onpolicy_4b_bnb_fp4",
+            "qwen_kd_baseline/checkpoint-300",
+            "qwen_onpolicy_4b_int4/checkpoint-300",
+            "qwen_kd_half/checkpoint-300",
+            "qwen_offpolicy_4b_bnb_fp4/checkpoint-300",
+            "qwen_onpolicy_4b_bnb_fp4/checkpoint-300",
         ],
         "tasks": "arc_challenge",
     }
