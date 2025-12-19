@@ -151,7 +151,7 @@ class EvalConfig(SharedConfig):
         "mmlu",
     ]
 
-    @field_validator("lora_paths", "tasks", mode="before")
+    @field_validator("lora_paths", "tasks", mode="wrap")
     @classmethod
     def ensure_list(cls, v):
         return [v] if not isinstance(v, list) else v
