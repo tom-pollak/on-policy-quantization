@@ -92,16 +92,17 @@ def main(cfg: EvalConfig) -> None:
                 wandb.summary[f"{name}/{task}"] = res[task]
 
         del model
-        torch.cuda.empty_cache()
 
     # Teacher model (unquantized)
     eval_and_log("teacher", cfg.load_model())
+    torch.cuda.empty_cache()
 
     # Teacher model (quantized) - PTQ baseline
     eval_and_log(
         "teacher_ptq",
         cfg.load_quant_model("ptq"),
     )
+    torch.cuda.empty_cache()
 
     # Evaluate each LoRA adapter
     for lora_path in cfg.lora_paths:
@@ -111,6 +112,7 @@ def main(cfg: EvalConfig) -> None:
         quantize_(model, cfg._get_torchao_config())
         eval_and_log(lora_path.stem, model)
         del model
+        torch.cuda.empty_cache()
 
     if state.is_main_process:
         wandb.log({"eval_results": table})
