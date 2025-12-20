@@ -3,6 +3,8 @@ import os
 os.environ["TRL_EXPERIMENTAL_SILENCE"] = "1"
 
 import torch
+import wandb
+from accelerate import PartialState
 from datasets import load_dataset
 from peft import LoraConfig, get_peft_model
 from pydantic import validate_call
@@ -46,7 +48,8 @@ def filter_dataset(dataset, tokenizer, max_length, min_response_tokens=32):
         return (
             prompt_len < max_length - min_response_tokens
             and response_len >= min_response_tokens
-            and completion_len < max_length  # prevent collator from setting prompt_ids=[]
+            # prevent collator from setting prompt_ids=[]
+            and completion_len < max_length
         )
 
     filters = [more_than_one_message, non_empty_message, has_room_for_response]
@@ -61,8 +64,13 @@ def main(cfg: TrainConfig) -> None:
     torch.manual_seed(cfg.seed)
     torch.cuda.manual_seed_all(cfg.seed)
 
-    os.environ["WANDB_PROJECT"] = cfg.wandb_project
-    os.environ["WANDB_TAGS"] = "train"
+    if PartialState().is_main_process:
+        wandb.init(
+            project=cfg.wandb_project,
+            name=cfg.output_dir.stem,
+            tags=["train"],
+            config=cfg.model_dump(),
+        )
 
     # Tokenizer
     tokenizer = AutoTokenizer.from_pretrained(cfg.model_name, use_fast=True)
@@ -102,7 +110,6 @@ def main(cfg: TrainConfig) -> None:
         # torch_compile=True,
         # torch_compile_backend="inductor",
         report_to=["wandb"],
-        run_name=cfg.output_dir.stem,
         ddp_find_unused_parameters=False,
         gradient_checkpointing=False,
         **cfg.trainer_kwargs(),
