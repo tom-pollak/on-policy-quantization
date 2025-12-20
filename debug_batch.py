@@ -1,6 +1,7 @@
 """Debug script to find problematic samples around step 303."""
 
 import json
+import torch
 from datasets import load_dataset
 from transformers import AutoTokenizer
 from config import TrainConfig
@@ -21,16 +22,7 @@ print(f"num_gpus: {NUM_GPUS}")
 print(f"samples_per_step: {samples_per_step}")
 print()
 
-# Calculate range - give some buffer around the error step
-# Step 303 means steps 0-302 completed, error during step 303
-# Samples consumed before step 303: 303 * 64 = 19392
-# But let's check a range around it in case of shuffling/off-by-one
-
-start_sample = (STEP_WITH_ERROR - 2) * samples_per_step  # 2 steps before
-end_sample = (STEP_WITH_ERROR + 2) * samples_per_step    # 2 steps after
-
 print(f"Error at step: {STEP_WITH_ERROR}")
-print(f"Checking sample range: [{start_sample}, {end_sample})")
 print()
 
 # Load tokenizer
@@ -55,8 +47,8 @@ def analyze_sample(idx, example):
         if not content or not content.strip():
             issues.append(f"EMPTY_CONTENT_MSG_{i}_{m.get('role', 'unknown')}")
 
-    # Extract prompt (non-assistant messages)
-    prompt_msgs = [m for m in messages if m["role"] != "assistant"]
+    # Extract prompt the same way as DataCollatorForChatML: all messages except last
+    prompt_msgs = messages[:-1]
 
     if len(prompt_msgs) == 0:
         issues.append("NO_PROMPT_MESSAGES")
@@ -87,6 +79,11 @@ def analyze_sample(idx, example):
         # Check if prompt_text is effectively empty after encoding
         if not prompt_text.strip():
             issues.append("EMPTY_PROMPT_TEXT")
+
+        # KEY BUG CHECK: collator sets prompt_ids=[] when completion >= max_length
+        completion_len = full_len - prompt_len
+        if completion_len >= cfg.max_length:
+            issues.append(f"COMPLETION_EXCEEDS_MAX_LENGTH({completion_len}>={cfg.max_length})")
 
     except Exception as e:
         issues.append(f"TOKENIZATION_ERROR: {str(e)}")
@@ -124,7 +121,7 @@ def filter_dataset(dataset, tokenizer, max_length, min_response_tokens=32):
 
     def has_room_for_response(example):
         messages = example["messages"]
-        prompt_msgs = [m for m in messages if m["role"] != "assistant"]
+        prompt_msgs = messages[:-1]  # match collator: all except last
         prompt_text = tokenizer.apply_chat_template(
             prompt_msgs, tokenize=False, add_generation_prompt=True
         )
