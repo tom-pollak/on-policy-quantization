@@ -22,6 +22,54 @@ k8s/train.sh lmbda_05_int4 --lmbda 0.5 --quant-type int4 --max-new-tokens 128
 k8s/train.sh lmbda_1_bnb_fp4 --lmbda 1 --quant-type bnb_fp4 --max-new-tokens 128
 
 k8s/train.sh lmbda_0_bnb_fp4 --lmbda 0 --quant-type bnb_fp4
+
+```
+
+## SWEEPS
+
+### λ=0 Runs (Fast HP Discovery)
+
+```bash
+# LR sweep (4 runs)
+k8s/train.sh lmbda0_lr5e6 --lmbda 0 --learning-rate 5e-6 --quant-type int4 --tags sweep --tags lr
+k8s/train.sh lmbda0_lr1e5 --lmbda 0 --learning-rate 1e-5 --quant-type int4 --tags sweep --tags lr
+k8s/train.sh lmbda0_lr2e5 --lmbda 0 --learning-rate 2e-5 --quant-type int4 --tags sweep --tags lr
+k8s/train.sh lmbda0_lr5e5 --lmbda 0 --learning-rate 5e-5 --quant-type int4 --tags sweep --tags lr
+
+# Beta sweep (2 runs)
+k8s/train.sh lmbda0_beta0 --lmbda 0 --beta 0 --quant-type int4 --tags sweep --tags beta
+k8s/train.sh lmbda0_beta05 --lmbda 0 --beta 0.5 --quant-type int4 --tags sweep --tags beta
+
+# Batch size (2 runs)
+k8s/train.sh lmbda0_bs16 --lmbda 0 --gradient-accumulation-steps 4 --quant-type int4 --tags sweep --tags batch
+k8s/train.sh lmbda0_bs32 --lmbda 0 --gradient-accumulation-steps 8 --quant-type int4 --tags sweep --tags batch
+
+# Weight decay (1 run)
+k8s/train.sh lmbda0_wd01 --lmbda 0 --weight-decay 0.01 --quant-type int4 --tags sweep --tags wd
+
+# LR × Batch cross - higher batch often needs higher LR (3 runs)
+k8s/train.sh lmbda0_bs16_lr2e5 --lmbda 0 --gradient-accumulation-steps 4 --learning-rate 2e-5 --quant-type int4 --tags sweep --tags lr-batch
+k8s/train.sh lmbda0_bs16_lr5e5 --lmbda 0 --gradient-accumulation-steps 4 --learning-rate 5e-5 --quant-type int4 --tags sweep --tags lr-batch
+k8s/train.sh lmbda0_bs32_lr5e5 --lmbda 0 --gradient-accumulation-steps 8 --learning-rate 5e-5 --quant-type int4 --tags sweep --tags lr-batch
+
+# Warmup ratio (2 runs)
+k8s/train.sh lmbda0_warmup05 --lmbda 0 --warmup-ratio 0.05 --quant-type int4 --tags sweep --tags warmup
+k8s/train.sh lmbda0_warmup10 --lmbda 0 --warmup-ratio 0.1 --quant-type int4 --tags sweep --tags warmup
+```
+
+### λ=1 Runs (Validate on On-Policy)
+
+```bash
+# Rollout length sweep (2 runs)
+k8s/train.sh lmbda1_tok256 --lmbda 1 --quant-type int4 --max-new-tokens 256 --tags sweep --tags rollout
+k8s/train.sh lmbda1_tok512 --lmbda 1 --quant-type int4 --max-new-tokens 512 --tags sweep --tags rollout
+
+# Batch size sweep (2 runs)
+k8s/train.sh lmbda1_bs16 --lmbda 1 --gradient-accumulation-steps 4 --quant-type int4 --max-new-tokens 256 --tags sweep --tags batch
+k8s/train.sh lmbda1_bs32 --lmbda 1 --gradient-accumulation-steps 8 --quant-type int4 --max-new-tokens 256 --tags sweep --tags batch
+
+# Beta sanity check (1 run)
+k8s/train.sh lmbda1_beta05 --lmbda 1 --beta 0.5 --quant-type int4 --max-new-tokens 256 --tags sweep --tags beta
 ```
 
 ```bash
