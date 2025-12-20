@@ -97,7 +97,7 @@ class TrainConfig(SharedConfig):
     use_lora: bool = True
 
     # trainer
-    max_steps: int = 500
+    max_steps: int = 1000
     max_length: int = 1024
 
     # batching / optimisation
