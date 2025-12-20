@@ -123,7 +123,11 @@ def main(cfg: TrainConfig) -> None:
         processing_class=tokenizer,
     )
 
-    trainer.train()
+    # Resume from last checkpoint if one exists
+    resume = (
+        any(cfg.output_dir.glob("checkpoint-*")) if cfg.output_dir.exists() else False
+    )
+    trainer.train(resume_from_checkpoint=resume)
     trainer.save_model(str(cfg.output_dir))
 
 
