@@ -139,10 +139,7 @@ class TrainConfig(SharedConfig):
 class EvalConfig(SharedConfig):
     """Config for model evaluation."""
 
-    lora_paths: list[Path] = [
-        Path("./qwen_kd_baseline"),
-        Path("./qwen_onpolicy_kd"),
-    ]
+    lora_paths: list[Path] = []
     tasks: list[str] = [
         "hellaswag",
         "arc_easy",

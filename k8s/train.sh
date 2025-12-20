@@ -13,7 +13,7 @@ source /root/.local/bin/env
 cd /data/tomp/on-policy-distillation/
 source .env
 uv sync
-uv run accelerate launch train.py --output_dir $job_name $@
+uv run accelerate launch train.py --output_dir dump/$job_name $@
 "
 
 cmd_b64=$(printf '%s' "$cmd" | base64)
