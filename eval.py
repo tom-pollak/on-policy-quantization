@@ -103,16 +103,17 @@ def main(cfg: EvalConfig) -> None:
 
         del model
 
-    # Teacher model (unquantized)
-    eval_and_log("teacher", cfg.load_model())
-    torch.cuda.empty_cache()
+    if cfg.eval_teacher:
+        # Teacher model (unquantized)
+        eval_and_log("teacher", cfg.load_model())
+        torch.cuda.empty_cache()
 
-    # Teacher model (quantized) - PTQ baseline
-    eval_and_log(
-        "teacher_ptq",
-        cfg.load_quant_model("ptq"),
-    )
-    torch.cuda.empty_cache()
+        # Teacher model (quantized) - PTQ baseline
+        eval_and_log(
+            "teacher_ptq",
+            cfg.load_quant_model("ptq"),
+        )
+        torch.cuda.empty_cache()
 
     # Evaluate each LoRA adapter
     for lora_path in cfg.lora_paths:

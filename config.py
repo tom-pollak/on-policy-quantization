@@ -140,6 +140,7 @@ class EvalConfig(SharedConfig):
     """Config for model evaluation."""
 
     lora_paths: list[Path] = []
+    eval_teacher: bool = True
     tasks: list[str] = [
         "hellaswag",
         "arc_easy",
