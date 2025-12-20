@@ -122,6 +122,9 @@ class TrainConfig(SharedConfig):
     lmbda: float = 1.0  # 0.0 = off-policy (dataset), 1.0 = on-policy (student rollouts)
     beta: float = 1.0  # 0.0 = forward KL, 1.0 = reverse KL
 
+    # wandb
+    tags: list[str] = ["train"]
+
     def trainer_kwargs(self):
         return self.model_dump(
             exclude=[
@@ -132,6 +135,7 @@ class TrainConfig(SharedConfig):
                 "mixed_precision",
                 "seed",
                 "use_lora",
+                "tags",
             ]
         )
 

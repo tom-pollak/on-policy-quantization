@@ -13,7 +13,6 @@ torch transformers datasets accelerate bitsandbytes peft scipy pydantic pydantic
 ## Training
 
 ```bash
-# avg completion length ~400
 k8s/train.sh lmbda_1_int4 --lmbda 1 --quant-type int4 --max-new-tokens 128
 
 k8s/train.sh lmbda_0_int4 --lmbda 0 --quant-type int4

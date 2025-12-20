@@ -68,7 +68,7 @@ def main(cfg: TrainConfig) -> None:
         wandb.init(
             project=cfg.wandb_project,
             name=cfg.output_dir.stem,
-            tags=["train"],
+            tags=cfg.tags,
             config=cfg.model_dump(),
         )
 
