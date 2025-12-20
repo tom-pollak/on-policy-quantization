@@ -38,7 +38,7 @@ k8s/train.sh lmbda0_lr5e5 --lmbda 0 --learning-rate 5e-5 --quant-type int4 --tag
 
 # Beta sweep (2 runs)
 k8s/train.sh lmbda0_beta0 --lmbda 0 --beta 0 --quant-type int4 --tags sweep --tags beta
-k8s/train.sh lmbda0_beta05 --lmbda 0 --beta 0.5 --quant-type int4 --tags sweep --tags beta
+k8s/train.sh lmbda0_beta05 --lmbda 0 --beta 0.5 --quant-type int4 --tags sweep --tags beta --per-device-train-batch-size 2 --gradient-accumulation-steps 4
 
 # Batch size (2 runs)
 k8s/train.sh lmbda0_bs16 --lmbda 0 --gradient-accumulation-steps 4 --quant-type int4 --tags sweep --tags batch
@@ -61,15 +61,15 @@ k8s/train.sh lmbda0_warmup10 --lmbda 0 --warmup-ratio 0.1 --quant-type int4 --ta
 
 ```bash
 # Rollout length sweep (2 runs)
-k8s/train.sh lmbda1_tok256 --lmbda 1 --quant-type int4 --max-new-tokens 256 --tags sweep --tags rollout
-k8s/train.sh lmbda1_tok512 --lmbda 1 --quant-type int4 --max-new-tokens 512 --tags sweep --tags rollout
+k8s/train.sh lmbda1_tok256 --lmbda 1 --quant-type int4 --max-new-tokens 256 --tags sweep --tags rollout --per-device-train_batch-size 2 --gradient-accumulation-steps 4
+k8s/train.sh lmbda1_tok512 --lmbda 1 --quant-type int4 --max-new-tokens 512 --tags sweep --tags rollout --per-device-train_batch-size 2 --gradient-accumulation-steps 4
 
 # Batch size sweep (2 runs)
 k8s/train.sh lmbda1_bs16 --lmbda 1 --gradient-accumulation-steps 4 --quant-type int4 --max-new-tokens 256 --tags sweep --tags batch
 k8s/train.sh lmbda1_bs32 --lmbda 1 --gradient-accumulation-steps 8 --quant-type int4 --max-new-tokens 256 --tags sweep --tags batch
 
 # Beta sanity check (1 run)
-k8s/train.sh lmbda1_beta05 --lmbda 1 --beta 0.5 --quant-type int4 --max-new-tokens 256 --tags sweep --tags beta
+k8s/train.sh lmbda1_beta05 --lmbda 1 --beta 0.5 --quant-type int4 --max-new-tokens 256 --tags sweep --tags beta  --per-device-train_batch-size 2 --gradient-accumulation-steps 4
 ```
 
 ```bash
