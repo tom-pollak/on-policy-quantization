@@ -14,35 +14,38 @@ torch transformers datasets accelerate bitsandbytes peft scipy pydantic pydantic
 
 ```bash
 # avg completion length ~400
-k8s/train.sh lmbda_1_int4 --lmbda 1 --quant_type int4 --max_new_tokens 128
+k8s/train.sh lmbda_1_int4 --lmbda 1 --quant-type int4 --max-new-tokens 128
 
-k8s/train.sh lmbda_0_int4 --lmbda 0 --quant_type int4
+k8s/train.sh lmbda_0_int4 --lmbda 0 --quant-type int4
 
-k8s/train.sh lmbda_05_int4 --lmbda 0.5 --quant_type int4 --max_new_tokens 128
+k8s/train.sh lmbda_05_int4 --lmbda 0.5 --quant-type int4 --max-new-tokens 128
 
-k8s/train.sh lmbda_1_bnb_fp4 --lmbda 1 --quant_type bnb_fp4 --max_new_tokens 128
+k8s/train.sh lmbda_1_bnb_fp4 --lmbda 1 --quant-type bnb_fp4 --max-new-tokens 128
 
-k8s/train.sh lmbda_0_bnb_fp4 --lmbda 0 --quant_type bnb_fp4
+k8s/train.sh lmbda_0_bnb_fp4 --lmbda 0 --quant-type bnb_fp4
 ```
 
 ```bash
-k8s/eval.sh eval --quant_type int4 --lora_paths dump/lmbda_1_int4 --lora_paths dump/lmbda_0_int4 --lora_paths dump/lmbda_05_int4 --lora_paths dump/lmbda_1_bnb_fp4 --lora_paths dump/lmbda_0_bnb_fp4
+k8s/eval.sh eval --quant-type int4 --lora-paths dump/lmbda_1_int4 --lora_paths dump/lmbda_0_int4 --lora_paths dump/lmbda_05_int4 --lora_paths dump/lmbda_1_bnb_fp4 --lora_paths dump/lmbda_0_bnb_fp4
 
 
 
-k8s/eval.sh eval --quant_type int4 --lora_paths dump/lmbda_0_int4 --lora_paths dump/lmbda_0_bnb_fp4
+k8s/eval.sh eval --quant-type int4 --lora-paths dump/lmbda_0_int4 --lora_paths dump/lmbda_0_bnb_fp4
+
+# tomorrow
+k8s/eval.sh eval --quant-type int4 --lora-paths dump/lmbda_1_int4 --lora_paths dump/lmbda_05_int4 --lora_paths dump/lmbda_1_bnb_fp4 --no-eval-teacher
 ```
 
 ### 1. Off-policy KD baseline
 
 ```bash
-uv run accelerate launch train.py --lmbda 0 --output_dir qwen_kd_baseline --quant_type int4
+uv run accelerate launch train.py --lmbda 0 --output_dir qwen_kd_baseline --quant-type int4
 ```
 
 ### 2. On-policy KD
 
 ```bash
-uv run accelerate launch train.py --lmbda 1 --output_dir qwen_onpolicy_4b_int4 --quant_type int4
+uv run accelerate launch train.py --lmbda 1 --output_dir qwen_onpolicy_4b_int4 --quant-type int4
 ```
 
 ### 3. Perplexity comparison (teacher vs PTQ vs KD vs on-policy KD)
