@@ -95,6 +95,7 @@ def analyze_sample(idx, example):
         "prompt_len": prompt_len,
         "full_len": full_len,
         "response_len": response_len,
+        "completion_len": full_len - prompt_len,  # raw completion before truncation
         "num_messages": len(messages),
         "roles": [m["role"] for m in messages],
         "content_lengths": [len(m.get("content", "")) for m in messages],
