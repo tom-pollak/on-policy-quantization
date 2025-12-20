@@ -116,11 +116,11 @@ class TrainConfig(SharedConfig):
     min_new_tokens: int = 16
     include_tokens_per_second: bool = True
 
-    output_dir: Path = Path("./qwen_onpolicy_kd")
+    output_dir: Path = Path("./qwen_4b_tulu3_sft_lmbda_1")
 
     # GKD params
     lmbda: float = 1.0  # 0.0 = off-policy (dataset), 1.0 = on-policy (student rollouts)
-    beta: float = 0.0  # 0.0 = forward KL, 1.0 = reverse KL
+    beta: float = 1.0  # 0.0 = forward KL, 1.0 = reverse KL
 
     def trainer_kwargs(self):
         return self.model_dump(
