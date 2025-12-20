@@ -1,5 +1,6 @@
 """Debug script to find problematic samples around step 303."""
 
+import os
 import json
 import torch
 from datasets import load_dataset
@@ -136,7 +137,7 @@ def filter_dataset(dataset, tokenizer, max_length, min_response_tokens=32):
         )
 
     filters = [more_than_one_message, non_empty_message, has_room_for_response]
-    return dataset.filter(lambda x: all(f(x) for f in filters))
+    return dataset.filter(lambda x: all(f(x) for f in filters), num_proc=os.cpu_count())
 
 
 filtered_dataset = filter_dataset(raw_dataset, tokenizer, max_length=cfg.max_length)
