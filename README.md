@@ -25,13 +25,14 @@ k8s/train.sh qwen_offpolicy_4b_bnb_fp4 --lmbda 0 --quant_type bnb_fp4
 ```
 
 k8s/eval.sh eval --lora_paths qwen_kd_baseline qwen_onpolicy_4b_int4
-```
+
+````
 
 ### 1. Off-policy KD baseline
 
 ```bash
 uv run accelerate launch train.py --lmbda 0 --output_dir qwen_kd_baseline --quant_type int4
-```
+````
 
 ### 2. On-policy KD
 
@@ -51,6 +52,9 @@ uv run python eval.py
 model                     | hellaswa | arc_easy | arc_chal | winogran |     mmlu
 teacher                   |   0.5262 |   0.8308 |   0.5572 |   0.6835 |   0.7067
 ptq_bnb_nf4               |          |          |   0.5410 |          |
+ptq_int4                                        |   0.5265
 int4_lmbda_0                                    |   0.5375
 int4_lmbda_1                                    |   0.5384
+int4_lmbda_05                                   |   0.5427
+bnb_fp4_lmbda_1                                 |   0.5392
 ```

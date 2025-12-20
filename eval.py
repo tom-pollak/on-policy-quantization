@@ -1,5 +1,6 @@
 import os
 import logging
+from pathlib import Path
 import torch
 import wandb
 from accelerate import PartialState
@@ -12,6 +13,13 @@ from peft import PeftModel
 from torchao.quantization import quantize_
 
 from config import EvalConfig, Tee
+
+
+def get_latest_checkpoint(output_dir: Path) -> tuple[Path, int]:
+    """Find the latest checkpoint in the given output directory."""
+    checkpoint = max(output_dir.glob("checkpoint-*"), key=lambda p: int(p.name.split("-")[1]))
+    step = int(checkpoint.name.split("-")[1])
+    return checkpoint, step
 
 
 def load_model(
@@ -93,24 +101,25 @@ def main(cfg: EvalConfig) -> None:
 
         del model
 
-    # # Teacher model (unquantized)
-    # eval_and_log("teacher", cfg.load_model())
-    # torch.cuda.empty_cache()
+    # Teacher model (unquantized)
+    eval_and_log("teacher", cfg.load_model())
+    torch.cuda.empty_cache()
 
-    # # # Teacher model (quantized) - PTQ baseline
-    # eval_and_log(
-    #     "teacher_ptq",
-    #     cfg.load_quant_model("ptq"),
-    # )
-    # torch.cuda.empty_cache()
+    # Teacher model (quantized) - PTQ baseline
+    eval_and_log(
+        "teacher_ptq",
+        cfg.load_quant_model("ptq"),
+    )
+    torch.cuda.empty_cache()
 
     # Evaluate each LoRA adapter
     for lora_path in cfg.lora_paths:
+        checkpoint, step = get_latest_checkpoint(lora_path)
         model = cfg.load_model()
-        model = PeftModel.from_pretrained(model, str(lora_path))
+        model = PeftModel.from_pretrained(model, str(checkpoint))
         model = model.merge_and_unload()
         quantize_(model, cfg._get_torchao_config())
-        eval_and_log(lora_path.stem, model)
+        eval_and_log(f"{lora_path.stem}/{step}", model)
         del model
         torch.cuda.empty_cache()
 
