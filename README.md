@@ -90,6 +90,13 @@ k8s/eval.sh eval --quant-type int4 --lora-paths dump/lmbda_0_int4 --lora_paths d
 
 # tomorrow
 k8s/eval.sh eval --quant-type int4 --lora-paths dump/lmbda_1_int4 --lora_paths dump/lmbda_05_int4 --lora_paths dump/lmbda_1_bnb_fp4 --no-eval-teacher
+k8s/eval.sh eval-lmbda1-batch --quant-type int4 --tags eval --no-eval-teacher --lora-paths dump/lmbda1_bs16 --lora-paths dump/lmbda1_bs32 --tags lmbda1 --tags batch
+k8s/eval.sh eval-lmbda1-rollout --quant-type int4 --tags eval --no-eval-teacher --lora-paths dump/lmbda1_tok256 --lora-paths dump/lmbda1_tok512 --tags rollout --tags lmbda1
+k8s/eval.sh eval-lmbda1-lr --quant-type int4 --tags eval --no-eval-teacher --lora-paths dump/lmbda1_lr5e5 --lora-paths dump/lmbda1_lr1e4 --tags lr --tags lmbda1
+k8s/eval.sh eval-lmbda1-beta --quant-type int4 --tags eval --no-eval-teacher --lora-paths dump/lmbda1_beta05 --tags beta --tags lmbda1
+k8s/eval.sh eval-lmbda0-beta --quant-type int4 --tags eval --no-eval-teacher --lora-paths dump/lmbda0_beta1 --lora-paths dump/lmbda0_beta05 --lora-paths dump/lmbda0_beta0 --tags beta --tags lmbda0
+k8s/eval.sh eval-lmbda0-20k --quant-type int4 --tags eval --no-eval-teacher --lora-paths dump/lmbda0_lr5e5_steps20k --tags 20k --tags lmbda0
+k8s/eval.sh eval-lmbda0-lr --quant-type int4 --tags eval --lora-paths dump/lmbda0_lr5e6 --lora-paths dump/lmbda0_lr1e5 --lora-paths dump/lmbda0_lr2e5 --lora-paths dump/lmbda0_lr5e5 --lora-paths dump/lmbda0_lr1e4 --tags lr --no-eval-teacher
 ```
 
 ### 1. Off-policy KD baseline
