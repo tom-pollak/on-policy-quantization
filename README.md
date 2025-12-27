@@ -1,8 +1,8 @@
-# On-Policy Distillation
+# On-Policy Quantization
 
 Knowledge distillation from FP32 teacher to MXFP4 student using on-policy (student-generated) data rather than static datasets.
 
-Standard KD trains on fixed datasets, causing distribution mismatch—the student never learns from its own mistakes. On-policy distillation fixes this by having the student generate sequences and learning from teacher feedback on those generations. Based on [GKD](https://arxiv.org/abs/2306.13649).
+Standard KD trains on fixed datasets, causing distribution mismatch—the student never learns from its own mistakes. On-policy distillation fixes this by having the student generate sequences and learning from teacher feedback on those generations. Inspired by [GKD](https://arxiv.org/abs/2306.13649) and [on-policy distillation](https://thinkingmachines.ai/blog/on-policy-distillation/).
 
 - `λ` controlling the interpolation: `λ=0` is off-policy (dataset only), `λ=1` is fully on-policy (student generations only).
 
