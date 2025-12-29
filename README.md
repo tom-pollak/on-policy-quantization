@@ -54,11 +54,11 @@ Higher learning rates achieve lower training loss but worse eval accuracy. Lower
 
 For standard distillation, forward KL is often used, however [on policy distillation](https://thinkingmachines.ai/blog/on-policy-distillation/#loss-function-reverse-kl) recommends reverse KL. I find similar results for λ=0 (off-policy distillation) forward KL performs better.
 
-| Beta        | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU  |
-| ----------- | --------- | --------- | ------------- | ---------- | ----- |
-| 0.0 (no KL) | **0.521** | **0.823** | **0.540**     | 0.678      | 0.681 |
-| 0.5         | 0.517     | 0.822     | 0.537         | 0.679      | 0.681 |
-| 1.0         | 0.515     | 0.820     | 0.538         | **0.684**  | 0.679 |
+| Beta | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU  |
+| ---- | --------- | --------- | ------------- | ---------- | ----- |
+| 0.0  | **0.521** | **0.823** | **0.540**     | 0.678      | 0.681 |
+| 0.5  | 0.517     | 0.822     | 0.537         | 0.679      | 0.681 |
+| 1.0  | 0.515     | 0.820     | 0.538         | **0.684**  | 0.679 |
 
 ### On-Policy Hyperparameter Sweeps (λ=1)
 
