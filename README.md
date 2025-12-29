@@ -60,7 +60,14 @@ Best runs from each approach (default hyperparameters, 10k steps):
 | 5e-5          | 0.514     | 0.815    | 0.534         | 0.673      | 0.677     |
 | 1e-4          | 0.513     | 0.811    | 0.521         | 0.670      | 0.674     |
 
-### Beta (KL coefficient) Sweep (λ=0)
+### Beta sweep (λ=0)
+
+- `beta=0`: forward KL
+- `beta=1`: reverse KL
+- `beta` between 0-1 interpolates between the two.
+
+For standard distillation, forward KL is often used, however [on policy distillation](https://thinkingmachines.ai/blog/on-policy-distillation/#loss-function-reverse-kl) recommends reverse KL. I find similar results for λ=0 (off-policy distillation) forward KL performs better.
+
 
 | Beta        | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU  |
 | ----------- | --------- | --------- | ------------- | ---------- | ----- |
@@ -69,6 +76,10 @@ Best runs from each approach (default hyperparameters, 10k steps):
 | 1.0         | 0.515     | 0.820     | 0.538         | **0.684**  | 0.679 |
 
 ### On-Policy Hyperparameter Sweeps (λ=1)
+
+From limited sweeps, it seems that batch size and rollout length are not sensitive params.
+
+> Note I do the same number of steps, so doubling batch size / rollout lenght doubles the compute budget! Suggesting we've saturated the quantization accuracy of the model.
 
 **Batch size:**
 
