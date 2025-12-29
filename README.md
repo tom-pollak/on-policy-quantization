@@ -53,7 +53,7 @@ Higher learning rates achieve lower training loss but worse eval accuracy. Lower
 | 1k    | 0.118      | 0.514     | 0.815     | 0.534         | **0.673**  | **0.677** |
 | 20k   | 0.068      | 0.513     | **0.820** | **0.546**     | 0.664      | 0.674     |
 
-20x compute reduces training loss by 42% but eval accuracy is mixed—some benchmarks improve slightly (ARC) while others degrade (WinoGrande, MMLU). This suggests we've hit the accuracy ceiling for INT4 quantization.
+20x compute reduces training loss by 42% but eval accuracy is mixed. Suggests we've hit the accuracy ceiling for INT4 quantization.
 
 ### Beta sweep (λ=0)
 
