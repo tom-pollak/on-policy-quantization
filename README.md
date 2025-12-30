@@ -21,11 +21,11 @@ uv sync
 ## Training
 
 ```bash
-# Off-policy KD baseline (λ=0)
-uv run accelerate launch train.py --lmbda 0 --output_dir qwen_kd_baseline --quant-type int4 --do-eval
+# Off-policy KD (λ=0, β=0, lr=5e-6) - best tuned
+uv run accelerate launch train.py @configs/offpolicy.toml --output-dir dump/offpolicy --quant-type int4
 
-# On-policy KD (λ=1)
-uv run accelerate launch train.py --lmbda 1 --output_dir qwen_onpolicy_4b_int4 --quant-type int4 --do-eval
+# On-policy KD (λ=1, β=1, lr=5e-6) - best tuned
+uv run accelerate launch train.py @configs/onpolicy.toml --output-dir dump/onpolicy --quant-type int4
 ```
 
 ## Results
