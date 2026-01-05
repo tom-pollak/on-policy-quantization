@@ -13,7 +13,7 @@ from pydantic import validate_call
 from pydantic_config import parse_argv
 from transformers import AutoTokenizer
 from config import EvalConfig, TrainConfig, Tee
-from eval import main as run_eval
+from eval import PERPLEXITY_DATASETS, main as run_eval
 from trainer import MinTokensGKDConfig as GKDConfig, MinTokensGKDTrainer as GKDTrainer
 
 
@@ -124,11 +124,18 @@ def main(cfg: TrainConfig) -> None:
         **cfg.trainer_kwargs(),
     )
 
+    # Load perplexity dataset for periodic evaluation
+    eval_dataset = None
+    if cfg.perplexity_dataset:
+        ds_name, ds_config, ds_split = PERPLEXITY_DATASETS[cfg.perplexity_dataset]
+        eval_dataset = load_dataset(ds_name, ds_config, split=ds_split)
+
     trainer = GKDTrainer(
         model=student,
         teacher_model=teacher,
         args=training_args,
         train_dataset=dataset,
+        eval_dataset=eval_dataset,
         processing_class=tokenizer,
     )
 
