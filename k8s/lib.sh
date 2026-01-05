@@ -1,7 +1,5 @@
 #!/bin/bash
-# Common k8s job submission utilities
 
-# Capture local env vars to pass through
 env_exports=""
 for var in HF_HOME HF_DATASETS_OFFLINE; do
     [ -n "${!var:-}" ] && env_exports+="export $var=\"${!var}\"; "
@@ -19,7 +17,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 source /root/.local/bin/env
 cd /data/tomp/on-policy-distillation/
 source .env
-uv sync
+uv sync --extra gpu
 $run_cmd
 "
     local cmd_b64=$(printf '%s' "$cmd" | base64)
