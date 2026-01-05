@@ -21,10 +21,10 @@ uv sync
 ## Training
 
 ```bash
-# Off-policy KD (λ=0, β=0, lr=5e-6) - best tuned
+# Off-policy KD (λ=0, β=0, lr=5e-6)
 uv run accelerate launch train.py @configs/offpolicy.toml --output-dir dump/offpolicy --quant-type int4
 
-# On-policy KD (λ=1, β=1, lr=5e-6) - best tuned
+# On-policy KD (λ=1, β=1, lr=5e-6)
 uv run accelerate launch train.py @configs/onpolicy.toml --output-dir dump/onpolicy --quant-type int4
 ```
 
