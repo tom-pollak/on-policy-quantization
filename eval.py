@@ -10,15 +10,94 @@ os.environ["HF_DATASETS_OFFLINE"] = "1"
 import torch
 import wandb
 from accelerate import PartialState
+from datasets import load_dataset
 from lm_eval import evaluator
 from lm_eval.models.huggingface import HFLM
 from peft import PeftModel
 from pydantic import validate_call
 from pydantic_config import parse_argv
 from torchao.quantization import quantize_
+from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from config import EvalConfig, Tee
+
+
+PERPLEXITY_DATASETS = {
+    "wikitext": ("wikitext", "wikitext-2-raw-v1", "test"),
+    "c4": ("allenai/c4", "en", "validation"),
+}
+
+
+@torch.no_grad()
+def compute_perplexity(
+    model,
+    tokenizer,
+    dataset: str | None = "wikitext",
+    max_length: int = 1024,
+    stride: int = 512,
+    max_samples: int | None = None,
+) -> float | None:
+    """Compute perplexity on a dataset using sliding window.
+
+    Args:
+        model: The model to evaluate
+        tokenizer: Tokenizer for the model
+        dataset: Dataset name ("wikitext", "c4") or None to skip
+        max_length: Maximum sequence length for each window
+        stride: Stride between windows (smaller = more overlap, more accurate)
+        max_samples: Max samples to use (for large datasets like C4)
+
+    Returns:
+        Perplexity value, or None if dataset is None
+    """
+    if dataset is None:
+        return None
+
+    if dataset not in PERPLEXITY_DATASETS:
+        raise ValueError(
+            f"Unknown dataset: {dataset}. Choose from {list(PERPLEXITY_DATASETS.keys())}"
+        )
+
+    ds_name, ds_config, ds_split = PERPLEXITY_DATASETS[dataset]
+    ds = load_dataset(ds_name, ds_config, split=ds_split)
+
+    if max_samples is not None:
+        ds = ds.select(range(min(max_samples, len(ds))))
+
+    # Concatenate all text
+    text_key = "text" if "text" in ds.column_names else ds.column_names[0]
+    text = "\n\n".join(ds[text_key])
+
+    # Tokenize
+    encodings = tokenizer(text, return_tensors="pt")
+    seq_len = encodings.input_ids.size(1)
+
+    device = next(model.parameters()).device
+    nlls = []
+    prev_end_loc = 0
+
+    for begin_loc in tqdm(
+        range(0, seq_len, stride), desc=f"Perplexity ({dataset})", leave=False
+    ):
+        end_loc = min(begin_loc + max_length, seq_len)
+        trg_len = end_loc - prev_end_loc  # tokens to compute loss on
+
+        input_ids = encodings.input_ids[:, begin_loc:end_loc].to(device)
+        target_ids = input_ids.clone()
+        # Only compute loss on new tokens (not overlapping ones)
+        target_ids[:, :-trg_len] = -100
+
+        outputs = model(input_ids, labels=target_ids)
+        neg_log_likelihood = outputs.loss * trg_len
+        nlls.append(neg_log_likelihood)
+
+        prev_end_loc = end_loc
+        if end_loc >= seq_len:
+            break
+
+    ppl = torch.exp(torch.stack(nlls).sum() / prev_end_loc)
+    return ppl.item()
 
 
 def get_latest_checkpoint(output_dir: Path) -> tuple[Path, int]:
@@ -93,19 +172,29 @@ def main(cfg: EvalConfig) -> None:
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    # Build column list: tasks + optional perplexity
+    ppl_col = f"ppl_{cfg.perplexity_dataset}" if cfg.perplexity_dataset else None
+    columns = cfg.tasks + ([ppl_col] if ppl_col else [])
+
     # header
     if state.is_main_process:
-        print(f"{'model':25s} | " + " | ".join(f"{t[:8]:>8s}" for t in cfg.tasks))
-        table = wandb.Table(columns=["model"] + cfg.tasks)
+        print(f"{'model':25s} | " + " | ".join(f"{c[:8]:>8s}" for c in columns))
+        table = wandb.Table(columns=["model"] + columns)
     else:
         table = None
 
     def eval_and_log(name: str, model):
         res = run_lm_eval(model, tokenizer, cfg.tasks)
+
+        # Compute perplexity if configured
+        ppl = compute_perplexity(model, tokenizer, dataset=cfg.perplexity_dataset)
+        if ppl is not None:
+            res[ppl_col] = ppl
+
         if state.is_main_process:
             assert table is not None
-            print(f"{name:25s} | " + " | ".join(f"{res[t]:8.4f}" for t in cfg.tasks))
-            table.add_data(name, *[res[t] for t in cfg.tasks])
+            print(f"{name:25s} | " + " | ".join(f"{res[c]:8.4f}" for c in columns))
+            table.add_data(name, *[res[c] for c in columns])
 
         del model
 

@@ -126,6 +126,10 @@ class TrainConfig(SharedConfig):
     # eval
     do_eval: bool = True
 
+    # perplexity eval during training
+    perplexity_dataset: str | None = "wikitext"  # None to disable
+    perplexity_eval_steps: int = 100  # how often to compute perplexity
+
     def trainer_kwargs(self):
         return self.model_dump(
             exclude=[
@@ -138,6 +142,8 @@ class TrainConfig(SharedConfig):
                 "use_lora",
                 "tags",
                 "do_eval",
+                "perplexity_dataset",
+                "perplexity_eval_steps",
             ]
         )
 
@@ -156,6 +162,8 @@ class EvalConfig(SharedConfig):
         "winogrande",
         "mmlu",
     ]
+    # perplexity eval
+    perplexity_dataset: str | None = "wikitext"  # None to skip
 
     @field_validator("lora_paths", "tasks", mode="before")
     @classmethod
