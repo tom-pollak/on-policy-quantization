@@ -17,7 +17,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 source /root/.local/bin/env
 cd /data/tomp/on-policy-distillation/
 source .env
-uv sync --extra gpu
+uv sync --extra gpu --extra quant
 $run_cmd
 "
     local cmd_b64=$(printf '%s' "$cmd" | base64)
