@@ -171,13 +171,15 @@ def main(cfg: EvalConfig) -> None:
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    # Build column list: tasks + optional perplexity
-    ppl_col = f"ppl_{cfg.perplexity_dataset}" if cfg.perplexity_dataset else None
-    columns = ["model"] + cfg.tasks + ["avg"] + ([ppl_col] if ppl_col else [])
+    # Build column list: tasks + avg + optional perplexity
+    columns = ["model"] + cfg.tasks + ["avg"]
+    if cfg.perplexity_dataset:
+        columns.append(f"ppl_{cfg.perplexity_dataset}")
 
     # header
     if state.is_main_process:
-        print(f"{'model':25s} | " + " | ".join(f"{t[:8]:>8s}" for t in cfg.tasks))
+        header = " | ".join(f"{c[:8]:>8s}" for c in columns)
+        print(header)
         table = wandb.Table(columns=columns)
     else:
         table = None
@@ -185,23 +187,27 @@ def main(cfg: EvalConfig) -> None:
     def eval_and_log(name: str, model):
         res = run_lm_eval(model, tokenizer, cfg.tasks)
         ppl = compute_perplexity(model, tokenizer, dataset=cfg.perplexity_dataset)
+        avg = sum(res.values()) / len(res)
 
         if state.is_main_process:
             assert table is not None
-            avg = sum(res.values()) / len(res)
+            row = [name] + [res[t] for t in cfg.tasks] + [avg]
+            if ppl is not None:
+                row.append(ppl)
+
             print(
-                f"{name:25s} | "
-                + " | ".join(f"{res[t]:8.4f}" for t in cfg.tasks)
-                + f" | {avg:8.4f}"
-                + f" | {ppl:8.4f}"
+                " | ".join(
+                    f"{v:8.4f}" if isinstance(v, float) else f"{v:>8s}" for v in row
+                )
             )
-            table.add_data(name, *[res[t] for t in cfg.tasks], avg, ppl)
+            table.add_data(*row)
 
             # Log individual metrics to summary for cross-run comparison
             for task, acc in res.items():
                 wandb.summary[f"eval/{name}/{task}"] = acc
             wandb.summary[f"eval/{name}/avg"] = avg
-            wandb.summary[f"eval/{name}/{ppl_col}"] = ppl
+            if ppl is not None:
+                wandb.summary[f"eval/{name}/ppl"] = ppl
 
         del model
 
