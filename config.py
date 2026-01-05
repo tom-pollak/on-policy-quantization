@@ -143,6 +143,7 @@ class TrainConfig(SharedConfig):
                 "use_lora",
                 "tags",
                 "do_eval",
+                "eval_strategy",  # set dynamically based on perplexity_dataset
             }
         )
 

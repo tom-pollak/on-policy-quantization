@@ -113,6 +113,12 @@ def main(cfg: TrainConfig) -> None:
         student = get_peft_model(student, lora_config)
         student.print_trainable_parameters()
 
+    # Load perplexity dataset for periodic evaluation
+    eval_dataset = None
+    if cfg.perplexity_dataset:
+        ds_name, ds_config, ds_split = PERPLEXITY_DATASETS[cfg.perplexity_dataset]
+        eval_dataset = load_dataset(ds_name, ds_config, split=ds_split)
+
     training_args = GKDConfig(
         bf16=cfg.mixed_precision == "bf16",
         fp16=cfg.mixed_precision == "fp16",
@@ -121,14 +127,9 @@ def main(cfg: TrainConfig) -> None:
         report_to=["wandb"],
         ddp_find_unused_parameters=False,
         gradient_checkpointing=False,
+        eval_strategy="steps" if eval_dataset else "no",
         **cfg.trainer_kwargs(),
     )
-
-    # Load perplexity dataset for periodic evaluation
-    eval_dataset = None
-    if cfg.perplexity_dataset:
-        ds_name, ds_config, ds_split = PERPLEXITY_DATASETS[cfg.perplexity_dataset]
-        eval_dataset = load_dataset(ds_name, ds_config, split=ds_split)
 
     trainer = GKDTrainer(
         model=student,

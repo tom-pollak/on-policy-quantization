@@ -28,7 +28,7 @@ class MinTokensGKDTrainer(GKDTrainer):
         self.generation_kwargs["min_new_tokens"] = self.args.min_new_tokens
 
     def evaluate(self, eval_dataset=None, ignore_keys=None, metric_key_prefix="eval"):
-        metrics = super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
+        metrics = {}
 
         if self.args.perplexity_dataset is not None:
             self.model.eval()
