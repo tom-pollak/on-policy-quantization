@@ -72,6 +72,8 @@ This is kind of strange, since I'm not repeating data so the "overfitting" must 
 
 I would have suspected λ=1 to be less susceptible to distrbution shift, since the student uses its own rollouts. But the prompts may still be very different from e.g. MMLU question.
 
+This ties into the later extended training experiments - while decreasing the loss substantially we see no real gain in evals!
+
 ## Beta
 
 - `β=0`: forward KL
