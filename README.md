@@ -74,27 +74,27 @@ I would have suspected λ=1 to be less susceptible to distrbution shift, since t
 
 ## Beta
 
-- `beta=0`: forward KL
-- `beta=1`: reverse KL
-- `beta` between 0-1 interpolates between the two.
+- `β=0`: forward KL
+- `β=1`: reverse KL
+- `β` between 0-1 interpolates between the two.
 
 ### λ=0
 
 For standard distillation, forward KL is often used, however [on policy distillation](https://thinkingmachines.ai/blog/on-policy-distillation/#loss-function-reverse-kl) recommends reverse KL. I find similar results for λ=0 (off-policy distillation) forward KL performs better. since off-policy trains on fixed data mean-seeking is appropriate.
 
-| Beta | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU  |
-| ---- | --------- | --------- | ------------- | ---------- | ----- |
-| 0.0  | **0.521** | **0.823** | **0.540**     | 0.678      | 0.681 |
-| 0.5  | 0.517     | 0.822     | 0.537         | 0.679      | 0.681 |
-| 1.0  | 0.515     | 0.820     | 0.538         | **0.684**  | 0.679 |
+| β   | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU  |
+| --- | --------- | --------- | ------------- | ---------- | ----- |
+| 0.0 | **0.521** | **0.823** | **0.540**     | 0.678      | 0.681 |
+| 0.5 | 0.517     | 0.822     | 0.537         | 0.679      | 0.681 |
+| 1.0 | 0.515     | 0.820     | 0.538         | **0.684**  | 0.679 |
 
 ### λ=1
 
-| Beta | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU  |
-| ---- | --------- | --------- | ------------- | ---------- | ----- |
-| 0.0  | 0.515     | **0.823** | 0.536         | **0.680**  | 0.686 |
-| 0.5  | 0.515     | 0.819     | **0.538**     | 0.675      | 0.686 |
-| 1.0  | 0.512     | 0.819     | 0.533         | 0.676      | 0.686 |
+| β   | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU  |
+| --- | --------- | --------- | ------------- | ---------- | ----- |
+| 0.0 | 0.515     | **0.823** | 0.536         | **0.680**  | 0.686 |
+| 0.5 | 0.515     | 0.819     | **0.538**     | 0.675      | 0.686 |
+| 1.0 | 0.512     | 0.819     | 0.533         | 0.676      | 0.686 |
 
 I don't find any substantive difference in β where λ=1. If anything, β=0 performs better.
 
