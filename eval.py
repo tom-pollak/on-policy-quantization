@@ -185,29 +185,21 @@ def main(cfg: EvalConfig) -> None:
         table = None
 
     def eval_and_log(name: str, model):
-        res = run_lm_eval(model, tokenizer, cfg.tasks)
+        task_results = run_lm_eval(model, tokenizer, cfg.tasks)
         ppl = compute_perplexity(model, tokenizer, dataset=cfg.perplexity_dataset)
-        avg = sum(res.values()) / len(res)
+
+        # Build metrics dict with keys matching columns (except "model")
+        metrics = {**task_results, "avg": sum(task_results.values()) / len(task_results)}
+        if ppl is not None:
+            metrics[f"ppl_{cfg.perplexity_dataset}"] = ppl
 
         if state.is_main_process:
             assert table is not None
-            row = [name] + [res[t] for t in cfg.tasks] + [avg]
-            if ppl is not None:
-                row.append(ppl)
-
-            print(
-                " | ".join(
-                    f"{v:8.4f}" if isinstance(v, float) else f"{v:>8s}" for v in row
-                )
-            )
+            row = [name] + [metrics[c] for c in columns[1:]]
+            print(" | ".join(f"{v:8.4f}" if isinstance(v, float) else f"{v:>8s}" for v in row))
             table.add_data(*row)
-
-            # Log individual metrics to summary for cross-run comparison
-            for task, acc in res.items():
-                wandb.summary[f"eval/{name}/{task}"] = acc
-            wandb.summary[f"eval/{name}/avg"] = avg
-            if ppl is not None:
-                wandb.summary[f"eval/{name}/ppl"] = ppl
+            for key, value in metrics.items():
+                wandb.summary[f"eval/{name}/{key}"] = value
 
         del model
 
