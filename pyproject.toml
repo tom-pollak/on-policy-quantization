@@ -13,7 +13,7 @@ dependencies = [
     "numpy",
     "peft>=0.18.0",
     "pydantic>=2.12.5",
-    "pydantic-config",
+    "pydantic-config[toml]",
     "scipy>=1.16.3",
     "torch>=2.9.1",
     "transformers>=4.57.3",

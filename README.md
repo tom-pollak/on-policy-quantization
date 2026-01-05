@@ -25,7 +25,7 @@ uv sync
 uv run accelerate launch train.py @configs/offpolicy.toml --output-dir dump/offpolicy
 
 # Sweep (creates wandb sweep + spawns N agents on K8s)
-bash k8s/sweep.sh sweeps/lr_sweep_onpolicy.yaml 4
+bash k8s/sweep.sh sweeps/lr_sweep_offpolicy.yaml 4
 ```
 
 ## Results
