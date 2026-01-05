@@ -184,11 +184,7 @@ def main(cfg: EvalConfig) -> None:
 
     def eval_and_log(name: str, model):
         res = run_lm_eval(model, tokenizer, cfg.tasks)
-
-        # Compute perplexity if configured
         ppl = compute_perplexity(model, tokenizer, dataset=cfg.perplexity_dataset)
-        if ppl is not None:
-            res[ppl_col] = ppl
 
         if state.is_main_process:
             assert table is not None
@@ -197,13 +193,15 @@ def main(cfg: EvalConfig) -> None:
                 f"{name:25s} | "
                 + " | ".join(f"{res[t]:8.4f}" for t in cfg.tasks)
                 + f" | {avg:8.4f}"
+                + f" | {ppl:8.4f}"
             )
-            table.add_data(name, *[res[t] for t in cfg.tasks], avg)
+            table.add_data(name, *[res[t] for t in cfg.tasks], avg, ppl)
 
             # Log individual metrics to summary for cross-run comparison
             for task, acc in res.items():
                 wandb.summary[f"eval/{name}/{task}"] = acc
             wandb.summary[f"eval/{name}/avg"] = avg
+            wandb.summary[f"eval/{name}/{ppl_col}"] = ppl
 
         del model
 

@@ -1,0 +1,5 @@
+# On-Policy Distillation for Model Quantization: An Empirical Study
+
+Knowledge distillation typically trains student models on fixed datasets, creating a distribution mismatch—students never learn from their own mistakes. On-policy distillation addresses this by having the student generate sequences and learning from teacher feedback on those generations. We investigate whether this approach benefits quantization, distilling from an FP16 teacher to an INT4 student.
+
+Through extensive hyperparameter sweeps over learning rate, KL divergence direction, batch size, and rollout length, we find that on-policy distillation provides no significant benefit over standard off-policy training. Best-tuned configurations differ by only 0.3% across five benchmarks (HellaSwag, ARC, WinoGrande, MMLU). We hypothesize that distribution mismatch is minimal when student and teacher share the same weights at different precision levels, unlike typical distillation where architectures differ substantially. Given the additional compute cost of on-policy rollouts, practitioners should prefer simpler off-policy approaches for quantization.
