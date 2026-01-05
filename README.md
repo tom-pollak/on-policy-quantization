@@ -119,7 +119,7 @@ From limited sweeps, it seems that batch size and rollout length are not sensiti
 
 > Note I do the same number of steps, so doubling batch size / rollout lenght doubles the compute budget! Suggesting we've saturated the quantization accuracy of the model.
 
-We get a substantial difference in loss TODO.
+NOTE: Can't compare losses between different hps: longer rollouts = higher loss with current setup.
 
 #### Batch size
 
