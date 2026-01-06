@@ -138,6 +138,6 @@ if __name__ == "__main__":
     ax.set_title("Original vs Dequantized")
 
     plt.tight_layout()
-    plt.savefig("quantization_error.png", dpi=150)
+    plt.savefig("figures/quantization_error.png", dpi=150)
     print(f"\nVisualization saved to quantization_error.png")
     plt.show()
