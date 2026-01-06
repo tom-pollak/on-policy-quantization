@@ -4,6 +4,7 @@ import os
 
 os.environ.setdefault("HF_HOME", "./hf-cache")
 os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
+os.environ.setdefault("PYTORCH_ALLOC_CONF", "expandable_segments:True")
 
 import torch
 import wandb

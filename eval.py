@@ -5,7 +5,7 @@ from pathlib import Path
 # Set cache directories before importing HF/lm_eval libraries
 os.environ.setdefault("HF_HOME", "./hf-cache")
 os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
-os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+os.environ.setdefault("PYTORCH_ALLOC_CONF", "expandable_segments:True")
 
 import torch
 import wandb
