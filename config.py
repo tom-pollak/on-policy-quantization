@@ -135,6 +135,11 @@ class TrainConfig(SharedConfig):
     eval_strategy: str = "steps"
     eval_steps: int = 250
 
+    @field_validator("tags", mode="before")
+    @classmethod
+    def ensure_list(cls, v):
+        return [v] if not isinstance(v, list) else v
+
     @model_validator(mode="after")
     def set_output_dir(self):
         if self.output_dir is not None:
@@ -196,7 +201,7 @@ class EvalConfig(SharedConfig):
     # perplexity eval
     perplexity_dataset: str | None = "wikitext"  # None to skip
 
-    @field_validator("lora_paths", "tasks", mode="before")
+    @field_validator("lora_paths", "tasks", "tags", mode="before")
     @classmethod
     def ensure_list(cls, v):
         return [v] if not isinstance(v, list) else v
