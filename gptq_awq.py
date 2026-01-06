@@ -7,6 +7,7 @@ os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
 os.environ.setdefault("PYTORCH_ALLOC_CONF", "expandable_segments:True")
 
 import torch
+from pydantic import validate_call
 import wandb
 from datasets import Dataset, load_dataset
 from pydantic_config import parse_argv
@@ -89,6 +90,7 @@ def quantize_awq(cfg: QuantEvalConfig, tokenizer, calib_ds):
     return model
 
 
+@validate_call
 def main(cfg: QuantEvalConfig):
     wandb.init(project=cfg.wandb_project, name="gptq-awq-eval", tags=cfg.tags)
     Tee.redirect_stdout_stderr("./gptq_awq.log")
