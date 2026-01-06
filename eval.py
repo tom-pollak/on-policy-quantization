@@ -245,12 +245,30 @@ def main(cfg: EvalConfig) -> None:
         torch.cuda.empty_cache()
 
     # Evaluate each LoRA adapter
+    # To match training: quantize first, then dequantize, then apply LoRA
+    # This ensures LoRA is applied to weights that have seen quantization error
     for lora_path in cfg.lora_paths:
         checkpoint, step = get_latest_checkpoint(lora_path)
+
+        # 1. Load and quantize (introduces quantization error)
         model = cfg.load_model()
+        quantize_(model, cfg._get_torchao_config())
+
+        # 2. Dequantize weights (upcast) - preserves quantization error in FP16
+        for module in model.modules():
+            if hasattr(module, "weight") and hasattr(module.weight, "dequantize"):
+                module.weight = torch.nn.Parameter(
+                    module.weight.dequantize(), requires_grad=False
+                )
+
+        # 3. Apply and merge LoRA
         model = PeftModel.from_pretrained(model, str(checkpoint))
         model = model.merge_and_unload()
-        quantize_(model, cfg._get_torchao_config())
+
+        # 4. Optionally re-quantize for inference
+        if cfg.requantize_after_lora:
+            quantize_(model, cfg._get_torchao_config())
+
         _eval(f"{lora_path.stem}/{step}", model)
         del model
         torch.cuda.empty_cache()

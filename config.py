@@ -183,6 +183,7 @@ class EvalConfig(SharedConfig):
 
     lora_paths: list[Path] = []
     eval_teacher: bool = True
+    requantize_after_lora: bool = True
     # wandb
     tags: list[str] = ["eval"]
     tasks: list[str] = [
