@@ -158,6 +158,46 @@ def run_lm_eval(
     return task_results, ppl
 
 
+def create_eval_table(
+    tasks: list[str], perplexity_dataset: str | None = None
+) -> tuple[list[str], wandb.Table]:
+    """Create wandb table with appropriate columns for eval results."""
+    columns = ["model"] + tasks + ["avg"]
+    if perplexity_dataset:
+        columns.append(f"ppl_{perplexity_dataset}")
+    return columns, wandb.Table(columns=columns)
+
+
+def eval_and_log(
+    name: str,
+    model,
+    tokenizer,
+    tasks: list[str],
+    columns: list[str],
+    table: wandb.Table,
+    perplexity_dataset: str | None = None,
+) -> dict:
+    """Run evaluation and log results to wandb table."""
+    task_results, ppl = run_lm_eval(
+        model, tokenizer, tasks, perplexity_dataset=perplexity_dataset
+    )
+
+    metrics = {
+        **task_results,
+        "avg": sum(task_results.values()) / len(task_results),
+    }
+    if ppl is not None:
+        metrics[f"ppl_{perplexity_dataset}"] = ppl
+
+    row = [name] + [metrics[c] for c in columns[1:]]
+    print(" | ".join(f"{v:8.4f}" if isinstance(v, float) else f"{v:>8s}" for v in row))
+    table.add_data(*row)
+    for key, value in metrics.items():
+        wandb.summary[f"eval/{name}/{key}"] = value
+
+    return metrics
+
+
 @validate_call
 def main(cfg: EvalConfig) -> None:
     state = PartialState()
@@ -175,56 +215,33 @@ def main(cfg: EvalConfig) -> None:
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    # Build column list: tasks + avg + optional perplexity
-    columns = ["model"] + cfg.tasks + ["avg"]
-    if cfg.perplexity_dataset:
-        columns.append(f"ppl_{cfg.perplexity_dataset}")
-
-    # header
     if state.is_main_process:
+        columns, table = create_eval_table(cfg.tasks, cfg.perplexity_dataset)
         header = " | ".join(f"{c[:8]:>8s}" for c in columns)
         print(header)
-        table = wandb.Table(columns=columns)
     else:
-        table = None
+        columns, table = None, None
 
-    def eval_and_log(name: str, model):
-        task_results, ppl = run_lm_eval(
-            model, tokenizer, cfg.tasks, perplexity_dataset=cfg.perplexity_dataset
-        )
-
-        # Build metrics dict with keys matching columns (except "model")
-        metrics = {
-            **task_results,
-            "avg": sum(task_results.values()) / len(task_results),
-        }
-        if ppl is not None:
-            metrics[f"ppl_{cfg.perplexity_dataset}"] = ppl
-
+    def _eval(name: str, model):
         if state.is_main_process:
-            assert table is not None
-            row = [name] + [metrics[c] for c in columns[1:]]
-            print(
-                " | ".join(
-                    f"{v:8.4f}" if isinstance(v, float) else f"{v:>8s}" for v in row
-                )
+            eval_and_log(
+                name,
+                model,
+                tokenizer,
+                cfg.tasks,
+                columns,
+                table,
+                cfg.perplexity_dataset,
             )
-            table.add_data(*row)
-            for key, value in metrics.items():
-                wandb.summary[f"eval/{name}/{key}"] = value
-
         del model
 
     if cfg.eval_teacher:
         # Teacher model (unquantized)
-        eval_and_log("teacher", cfg.load_model())
+        _eval("teacher", cfg.load_model())
         torch.cuda.empty_cache()
 
         # Teacher model (quantized) - PTQ baseline
-        eval_and_log(
-            "teacher_ptq",
-            cfg.load_quant_model("ptq"),
-        )
+        _eval("teacher_ptq", cfg.load_quant_model("ptq"))
         torch.cuda.empty_cache()
 
     # Evaluate each LoRA adapter
@@ -234,7 +251,7 @@ def main(cfg: EvalConfig) -> None:
         model = PeftModel.from_pretrained(model, str(checkpoint))
         model = model.merge_and_unload()
         quantize_(model, cfg._get_torchao_config())
-        eval_and_log(f"{lora_path.stem}/{step}", model)
+        _eval(f"{lora_path.stem}/{step}", model)
         del model
         torch.cuda.empty_cache()
 
