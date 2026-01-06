@@ -93,6 +93,7 @@ class TrainConfig(SharedConfig):
     seed: int = 42
 
     use_lora: bool = True
+    resume: bool = True  # resume from checkpoint if one exists; use --no-resume for sweeps
 
     # trainer
     max_steps: int = 1000
@@ -144,6 +145,7 @@ class TrainConfig(SharedConfig):
                 "mixed_precision",
                 "seed",
                 "use_lora",
+                "resume",
                 "tags",
                 "do_eval",
                 "eval_strategy",  # set dynamically based on perplexity_dataset

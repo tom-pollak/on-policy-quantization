@@ -11,4 +11,5 @@ command:
   - launch
   - ${program}
   - "@configs/onpolicy.toml"
+  - --no-resume
   - ${args}

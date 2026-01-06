@@ -6,6 +6,13 @@ os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
 os.environ.setdefault("PYTORCH_ALLOC_CONF", "expandable_segments:True")
 
 import torch
+import torch.serialization
+import numpy as np
+
+# PyTorch 2.6 changed torch.load to weights_only=True by default.
+# RNG state checkpoints contain numpy arrays, so we need to allowlist numpy.
+torch.serialization.add_safe_globals([np._core.multiarray._reconstruct, np.ndarray])
+
 import wandb
 from accelerate import PartialState
 from datasets import load_dataset
@@ -136,9 +143,11 @@ def main(cfg: TrainConfig) -> None:
         processing_class=tokenizer,
     )
 
-    # Resume from last checkpoint if one exists
+    # Resume from last checkpoint if one exists and resume is enabled
     resume = (
-        any(cfg.output_dir.glob("checkpoint-*")) if cfg.output_dir.exists() else False
+        cfg.resume
+        and cfg.output_dir.exists()
+        and any(cfg.output_dir.glob("checkpoint-*"))
     )
     trainer.train(resume_from_checkpoint=resume)
     trainer.save_model(str(cfg.output_dir))
