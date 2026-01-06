@@ -8,6 +8,7 @@ done
 submit_job() {
     local job_name="$1"
     local run_cmd="$2"
+    local gpu_count="${3:-8}"
     local job_name_safe="${job_name//_/--}"
 
     local cmd="
@@ -21,5 +22,5 @@ uv sync --extra gpu --extra quant
 $run_cmd
 "
     local cmd_b64=$(printf '%s' "$cmd" | base64)
-    JOB_NAME=$job_name_safe krun --gpu 8 --priority low --run-command "echo $cmd_b64 | base64 -d | bash"
+    JOB_NAME=$job_name_safe krun --gpu "$gpu_count" --priority low --run-command "echo $cmd_b64 | base64 -d | bash"
 }
