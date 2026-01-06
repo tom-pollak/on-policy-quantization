@@ -178,6 +178,85 @@ This is the correct approach because:
 - `compare_qat_ptq.py`: Script comparing QAT vs PTQ numerics
 - `eval.py`: Evaluation script - should use Option 3 (QAT prepare → convert)
 
+## QAT + LoRA Merge Semantics
+
+### The Problem
+
+When training with QAT + LoRA, the forward pass is:
+
+```
+output = fake_quant(W_base) @ x + W_B @ W_A @ x
+```
+
+The LoRA correction is added **after** fake quantization. The LoRA learns to correct the quantization error of `fake_quant(W_base)`.
+
+### What merge_and_unload Does
+
+When we call `merge_and_unload()`, the LoRA weights are merged into the base:
+
+```
+W_merged = W_base + W_B @ W_A
+output = fake_quant(W_merged) @ x
+```
+
+The fake quantization is applied to the **merged** weights - this is different!
+
+### Mathematical Comparison
+
+```
+Training:    y = Q(W) @ x + ΔW @ x     where Q = fake_quant, ΔW = B @ A
+Merged:      y = Q(W + ΔW) @ x
+```
+
+These are NOT equivalent because:
+- `Q(W) + ΔW ≠ Q(W + ΔW)` in general
+- The LoRA learned to correct `Q(W)`, not to be part of the weight before quantization
+
+### When Does This Matter?
+
+The difference depends on:
+1. **Magnitude of LoRA correction**: Small LoRA → small difference
+2. **Quantization granularity**: Group-wise quant → depends on group boundaries
+3. **Weight distribution**: If `W + ΔW` quantizes similarly to `W`, difference is small
+
+### Verification
+
+Run `verify_qat_lora.py` to measure the difference on a simple model:
+
+```bash
+uv run python verify_qat_lora.py
+```
+
+**Measured results** (512x512 layer with random LoRA weights):
+```
+No merge (training-like) vs Merged:  max=0.742188, mean=0.110840
+No merge (training-like) vs FP16:    max=0.148438, mean=0.030273
+```
+
+The merge introduces ~11% mean absolute error in outputs - significant!
+
+### Workaround: Skip Final Quantization
+
+If `requantize_after_lora=False`, the final `Q()` is skipped entirely:
+```
+y = (W + ΔW) @ x    # No quantization, avoids the mismatch
+```
+
+This keeps the LoRA correction in full precision, avoiding the semantic difference.
+
+### Alternatives if Merge Causes Issues
+
+1. **Don't merge**: Keep LoRA separate during eval
+   ```python
+   model = PeftModel.from_pretrained(model, checkpoint)
+   # Don't call merge_and_unload()
+   # Run inference with PeftModel directly
+   ```
+
+2. **Merge after convert**: Convert to int4 first, then somehow apply LoRA (complex)
+
+3. **Accept the difference**: If verification shows small error, merging may be acceptable
+
 ## Implementation Notes
 
 ### Why we don't need manual dequantization for eval

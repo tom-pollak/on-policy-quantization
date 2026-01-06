@@ -247,6 +247,12 @@ def main(cfg: EvalConfig) -> None:
 
     # Evaluate each LoRA adapter using QAT prepare → convert (Option 3)
     # This matches training numerics: QAT fake quant → apply LoRA → convert to int4
+    #
+    # NOTE on merge semantics (see docs/qat_vs_ptq_numerics.md):
+    #   Training: y = Q(W) @ x + ΔW @ x     (LoRA added AFTER fake quant)
+    #   Merged:   y = Q(W + ΔW) @ x         (LoRA merged BEFORE fake quant)
+    # These differ, but requantize_after_lora=False skips Q() entirely,
+    # giving y = (W + ΔW) @ x which avoids the mismatch.
     for lora_path in cfg.lora_paths:
         checkpoint, step = get_latest_checkpoint(lora_path)
 
