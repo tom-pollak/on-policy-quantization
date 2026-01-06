@@ -7,7 +7,10 @@ the config (to accept the arg) and the trainer (to pass it to generation_kwargs)
 
 from dataclasses import dataclass, field
 
-from trl.experimental.gkd import BaseGKDConfig, BaseGKDTrainer
+from trl.experimental.gkd import (
+    GKDConfig as BaseGKDConfig,
+    GKDTrainer as BaseGKDTrainer,
+)
 
 from eval import compute_perplexity
 
