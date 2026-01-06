@@ -46,4 +46,5 @@ class GKDTrainer(BaseGKDTrainer):
                 ] = ppl
             self.model.train()
 
+        self.log(metrics)
         return metrics
