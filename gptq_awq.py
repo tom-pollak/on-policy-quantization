@@ -1,5 +1,10 @@
 """Evaluate GPTQ and AWQ quantized models for comparison with torchao distillation."""
 
+import os
+
+os.environ.setdefault("HF_HOME", "./hf-cache")
+os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
+
 import torch
 import wandb
 from datasets import Dataset, load_dataset
