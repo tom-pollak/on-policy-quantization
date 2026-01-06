@@ -1,204 +1,175 @@
 """Evaluate GPTQ and AWQ quantized models for comparison with torchao distillation."""
 
-import os
-
-os.environ.setdefault("HF_HOME", "./hf-cache")
-os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
-
 import torch
-from datasets import load_dataset
-from lm_eval import evaluator
-from lm_eval.models.huggingface import HFLM
-from transformers import AutoModelForCausalLM, AutoTokenizer, GPTQConfig, AwqConfig
+import wandb
+from datasets import Dataset, load_dataset
+from pydantic_config import parse_argv
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-MODEL_NAME = "Qwen/Qwen3-4B-Instruct-2507"
-TASKS = ["hellaswag", "arc_easy", "arc_challenge", "winogrande", "mmlu"]
-
-
-def run_lm_eval(model, tokenizer, tasks: list[str]) -> dict:
-    """Run lm-evaluation-harness on specified tasks."""
-    lm = HFLM(pretrained=model, tokenizer=tokenizer)
-    results = evaluator.simple_evaluate(model=lm, tasks=tasks, batch_size="auto")
-    return {
-        task: results["results"][task].get(
-            "acc,none", results["results"][task].get("acc_norm,none")
-        )
-        for task in tasks
-    }
+from config import QuantEvalConfig, Tee
+from eval import run_lm_eval
 
 
-def get_calibration_dataset(tokenizer, num_samples: int = 128, max_length: int = 2048):
-    """Get calibration dataset for quantization."""
-    dataset = load_dataset("allenai/c4", "en", split="validation", streaming=True)
+def get_calibration_dataset(cfg: QuantEvalConfig, tokenizer):
+    """Prepare calibration data for quantization."""
+    ds = load_dataset(cfg.dataset_name, split="train", streaming=True)
     examples = []
-    for i, sample in enumerate(dataset):
-        if i >= num_samples:
+    for i, sample in enumerate(ds):
+        if i >= cfg.num_calibration_samples:
             break
-        text = sample["text"]
+        # Handle different dataset formats
+        if "messages" in sample:
+            text = tokenizer.apply_chat_template(
+                sample["messages"], tokenize=False, add_generation_prompt=False
+            )
+        elif "text" in sample:
+            text = sample["text"]
+        else:
+            text = str(sample[list(sample.keys())[0]])
+
         if len(text) > 256:
-            examples.append(text[:max_length])
-    return examples
+            examples.append({"text": text[: cfg.max_seq_length * 4]})
+
+    ds = Dataset.from_list(examples)
+
+    def tokenize(sample):
+        return tokenizer(
+            sample["text"],
+            padding=False,
+            max_length=cfg.max_seq_length,
+            truncation=True,
+            add_special_tokens=True,
+        )
+
+    return ds.map(tokenize, remove_columns=ds.column_names)
 
 
-def eval_gptq(model_name: str) -> dict:
-    """Quantize model with GPTQ and evaluate using optimum."""
-    from optimum.gptq import GPTQQuantizer
+def eval_gptq(cfg: QuantEvalConfig, tokenizer) -> dict:
+    """Quantize model with GPTQ via llmcompressor and evaluate."""
+    from llmcompressor import oneshot
+    from llmcompressor.modifiers.quantization import GPTQModifier
 
     print(f"\n{'=' * 60}")
     print("Evaluating GPTQ INT4")
     print(f"{'=' * 60}")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    # Load model
     model = AutoModelForCausalLM.from_pretrained(
-        model_name, torch_dtype=torch.float16, device_map="auto"
+        cfg.model_name, torch_dtype=cfg.dtype, device_map="auto"
     )
 
-    # Get calibration data
-    calibration_texts = get_calibration_dataset(tokenizer)
-    calibration_data = [
-        tokenizer(text, return_tensors="pt", truncation=True, max_length=2048)
-        for text in calibration_texts
-    ]
+    ds = get_calibration_dataset(cfg, tokenizer)
 
-    # Quantize with GPTQ
-    quantizer = GPTQQuantizer(bits=4, group_size=128, desc_act=False, dataset=calibration_data)
-    model = quantizer.quantize_model(model, tokenizer)
+    recipe = GPTQModifier(targets="Linear", scheme="W4A16", ignore=["lm_head"])
 
-    results = run_lm_eval(model, tokenizer, TASKS)
+    oneshot(
+        model=model,
+        dataset=ds,
+        recipe=recipe,
+        max_seq_length=cfg.max_seq_length,
+        num_calibration_samples=cfg.num_calibration_samples,
+    )
+
+    results = run_lm_eval(model, tokenizer, cfg.tasks)
     del model
     torch.cuda.empty_cache()
     return results
 
 
-def eval_awq(model_name: str) -> dict:
-    """Quantize model with AWQ and evaluate."""
-    from awq import AutoAWQForCausalLM
+def eval_awq(cfg: QuantEvalConfig, tokenizer) -> dict:
+    """Quantize model with AWQ via llmcompressor and evaluate."""
+    from llmcompressor import oneshot
+    from llmcompressor.modifiers.awq import AWQModifier
 
     print(f"\n{'=' * 60}")
     print("Evaluating AWQ INT4")
     print(f"{'=' * 60}")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    # Load and quantize
-    model = AutoAWQForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16)
-    model.quantize(
-        tokenizer,
-        quant_config={
-            "zero_point": True,
-            "q_group_size": 128,
-            "w_bit": 4,
-            "version": "GEMM",
-        },
-    )
-
-    results = run_lm_eval(model.model, tokenizer, TASKS)
-    del model
-    torch.cuda.empty_cache()
-    return results
-
-
-def eval_torchao_ptq(model_name: str) -> dict:
-    """Evaluate torchao INT4 PTQ baseline."""
-    from torchao.quantization import Int4WeightOnlyConfig, quantize_
-
-    print(f"\n{'=' * 60}")
-    print("Evaluating torchao INT4 PTQ")
-    print(f"{'=' * 60}")
-
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
     model = AutoModelForCausalLM.from_pretrained(
-        model_name, torch_dtype=torch.bfloat16, device_map="auto"
+        cfg.model_name, torch_dtype=cfg.dtype, device_map="auto"
     )
-    quantize_(model, Int4WeightOnlyConfig())
 
-    results = run_lm_eval(model, tokenizer, TASKS)
+    ds = get_calibration_dataset(cfg, tokenizer)
+
+    recipe = AWQModifier(
+        targets="Linear", scheme="W4A16_ASYM", ignore=["lm_head"], duo_scaling="both"
+    )
+
+    oneshot(
+        model=model,
+        dataset=ds,
+        recipe=recipe,
+        max_seq_length=cfg.max_seq_length,
+        num_calibration_samples=cfg.num_calibration_samples,
+    )
+
+    results = run_lm_eval(model, tokenizer, cfg.tasks)
     del model
     torch.cuda.empty_cache()
     return results
 
 
-def eval_fp16(model_name: str) -> dict:
-    """Evaluate FP16 teacher baseline."""
-    print(f"\n{'=' * 60}")
-    print("Evaluating FP16 Teacher")
-    print(f"{'=' * 60}")
+def main(cfg: QuantEvalConfig):
+    wandb.init(project=cfg.wandb_project, name="gptq-awq-eval", tags=cfg.tags)
+    Tee.redirect_stdout_stderr("./gptq_awq.log")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(cfg.model_name, use_fast=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name, torch_dtype=torch.bfloat16, device_map="auto"
-    )
+    # Build results table
+    columns = ["method"] + cfg.tasks + ["avg"]
+    table = wandb.Table(columns=columns)
 
-    results = run_lm_eval(model, tokenizer, TASKS)
-    del model
-    torch.cuda.empty_cache()
-    return results
+    all_results = {}
 
+    try:
+        all_results["GPTQ INT4"] = eval_gptq(cfg, tokenizer)
+    except Exception as e:
+        print(f"GPTQ eval failed: {e}")
+        import traceback
 
-def print_results(all_results: dict[str, dict]):
-    """Print results in markdown table format."""
+        traceback.print_exc()
+
+    try:
+        all_results["AWQ INT4"] = eval_awq(cfg, tokenizer)
+    except Exception as e:
+        print(f"AWQ eval failed: {e}")
+        import traceback
+
+        traceback.print_exc()
+
+    # Log results
     print(f"\n{'=' * 60}")
     print("RESULTS SUMMARY")
     print(f"{'=' * 60}\n")
 
-    # Header
-    header = "| Method | " + " | ".join(TASKS) + " | Avg |"
-    separator = "|" + "|".join(["---"] * (len(TASKS) + 2)) + "|"
+    header = "| Method | " + " | ".join(cfg.tasks) + " | Avg |"
+    separator = "|" + "|".join(["---"] * (len(cfg.tasks) + 2)) + "|"
     print(header)
     print(separator)
 
-    # Rows
     for method, results in all_results.items():
         avg = sum(results.values()) / len(results)
-        row = f"| {method} | " + " | ".join(f"{results[t]:.3f}" for t in TASKS)
+        row = f"| {method} | " + " | ".join(f"{results[t]:.3f}" for t in cfg.tasks)
         row += f" | {avg:.3f} |"
         print(row)
 
+        # Log to wandb
+        table.add_data(method, *[results[t] for t in cfg.tasks], avg)
+        for task, score in results.items():
+            wandb.summary[f"eval/{method}/{task}"] = score
+        wandb.summary[f"eval/{method}/avg"] = avg
 
-def main():
-    all_results = {}
+    wandb.log({"eval_results": table})
+    wandb.summary["eval_results"] = table
 
-    # Run evaluations
-    try:
-        all_results["FP16 Teacher"] = eval_fp16(MODEL_NAME)
-    except Exception as e:
-        print(f"FP16 eval failed: {e}")
+    print("\n(For reference from README:)")
+    print("| torchao PTQ | 0.509 | 0.816 | 0.527 | 0.674 | 0.678 | 0.641 |")
+    print("| Off-policy  | 0.517 | 0.824 | 0.538 | 0.688 | 0.682 | 0.650 |")
+    print("| On-policy   | 0.513 | 0.821 | 0.531 | 0.690 | 0.684 | 0.648 |")
 
-    try:
-        all_results["torchao INT4"] = eval_torchao_ptq(MODEL_NAME)
-    except Exception as e:
-        print(f"torchao eval failed: {e}")
-
-    try:
-        all_results["GPTQ INT4"] = eval_gptq(MODEL_NAME)
-    except Exception as e:
-        print(f"GPTQ eval failed: {e}")
-
-    try:
-        all_results["AWQ INT4"] = eval_awq(MODEL_NAME)
-    except Exception as e:
-        print(f"AWQ eval failed: {e}")
-
-    # Print comparison
-    print_results(all_results)
-
-    # Add distillation results for comparison
-    print("\n(For reference, your distillation results:)")
-    print("| Off-policy | 0.517 | 0.824 | 0.538 | 0.688 | 0.682 | 0.650 |")
-    print("| On-policy  | 0.513 | 0.821 | 0.531 | 0.690 | 0.684 | 0.648 |")
+    wandb.finish()
 
 
 if __name__ == "__main__":
-    main()
+    main(QuantEvalConfig(**parse_argv()))

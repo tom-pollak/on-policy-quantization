@@ -171,6 +171,18 @@ class EvalConfig(SharedConfig):
         return [v] if not isinstance(v, list) else v
 
 
+class QuantEvalConfig(EvalConfig):
+    """Config for GPTQ/AWQ quantization evaluation."""
+
+    # calibration
+    dataset_name: str = "allenai/tulu-3-sft-mixture"
+    num_calibration_samples: int = 512
+    max_seq_length: int = 2048
+
+    # wandb
+    tags: list[str] = ["quant-eval"]
+
+
 class Tee:
     def __init__(self, file_path, stream, main_only=False):
         local_rank = int(os.environ.get("LOCAL_RANK", 0))
