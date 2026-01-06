@@ -7,13 +7,13 @@ the config (to accept the arg) and the trainer (to pass it to generation_kwargs)
 
 from dataclasses import dataclass, field
 
-from trl.experimental.gkd import GKDConfig, GKDTrainer
+from trl.experimental.gkd import BaseGKDConfig, BaseGKDTrainer
 
 from eval import compute_perplexity
 
 
 @dataclass
-class MinTokensGKDConfig(GKDConfig):
+class GKDConfig(BaseGKDConfig):
     min_new_tokens: int = 1
     perplexity_dataset: str | None = field(
         default=None,
@@ -21,7 +21,7 @@ class MinTokensGKDConfig(GKDConfig):
     )
 
 
-class MinTokensGKDTrainer(GKDTrainer):
+class GKDTrainer(BaseGKDTrainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.generation_config.min_new_tokens = self.args.min_new_tokens

@@ -15,7 +15,7 @@ from pydantic_config import parse_argv
 from transformers import AutoTokenizer
 from config import EvalConfig, TrainConfig, Tee
 from eval import PERPLEXITY_DATASETS, main as run_eval
-from trainer import MinTokensGKDConfig as GKDConfig, MinTokensGKDTrainer as GKDTrainer
+from trainer import GKDConfig, GKDTrainer
 
 
 def filter_dataset(dataset, tokenizer, max_length, min_response_tokens=32):
