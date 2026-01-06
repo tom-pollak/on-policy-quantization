@@ -136,3 +136,17 @@ lmbda1_lr1e5              |   0.5110 |   0.8161 |   0.5367 |   0.6819 |   0.6859
 lmbda0_lr5e6_beta0        |   0.5166 |   0.8237 |   0.5384 |   0.6875 |   0.6815  (loss: 0.1618)
 lmbda1_lr5e6              |   0.5129 |   0.8211 |   0.5307 |   0.6898 |   0.6836  (loss: 0.2499)
 ```
+
+---
+
+# After bug fix eval
+
+## LR Sweeps
+
+```
+k8s/eval.sh eval-lmbda0-lr --quant-type int4 --tags eval --no-eval-teacher --lora-paths dump/lmbda0_lr1e-4_beta0 --lora-paths dump/lmbda0_lr5e-5_beta0 --lora-paths dump/lmbda0_lr1e-5_beta0 --lora-paths dump/lmbda0_lr5e-6_beta0 --lora-paths dump/lmbda0_lr1e-6_beta0 --tags lr --tags lmbda0 --tags sweep --tasks winogrande
+
+
+k8s/eval.sh eval-lmbda0-lr-no-requant --quant-type int4 --tags eval --no-eval-teacher --lora-paths dump/lmbda0_lr1e-4_beta0 --lora-paths dump/lmbda0_lr5e-5_beta0 --lora-paths dump/lmbda0_lr1e-5_beta0 --lora-paths dump/lmbda0_lr5e-6_beta0 --lora-paths dump/lmbda0_lr1e-6_beta0 --tags lr --tags lmbda0 --tags sweep --tasks winogrande --no-requantize-after-lora
+
+```

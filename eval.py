@@ -21,6 +21,7 @@ from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from config import EvalConfig, Tee
+from dequantize import dequantize_model_
 
 
 PERPLEXITY_DATASETS = {
@@ -255,11 +256,7 @@ def main(cfg: EvalConfig) -> None:
         quantize_(model, cfg._get_torchao_config())
 
         # 2. Dequantize weights (upcast) - preserves quantization error in FP16
-        for module in model.modules():
-            if hasattr(module, "weight") and hasattr(module.weight, "dequantize"):
-                module.weight = torch.nn.Parameter(
-                    module.weight.dequantize(), requires_grad=False
-                )
+        dequantize_model_(model)
 
         # 3. Apply and merge LoRA
         model = PeftModel.from_pretrained(model, str(checkpoint))
