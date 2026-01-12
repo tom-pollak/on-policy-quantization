@@ -99,8 +99,8 @@ def main(cfg: TrainConfig) -> None:
     student = cfg.load_quant_model("qat")
     if cfg.use_lora:
         lora_config = LoraConfig(
-            r=16,
-            lora_alpha=32,
+            r=cfg.lora_r,
+            lora_alpha=cfg.lora_alpha,
             target_modules=[
                 "q_proj",
                 "v_proj",
@@ -110,7 +110,7 @@ def main(cfg: TrainConfig) -> None:
                 "up_proj",
                 "down_proj",
             ],
-            lora_dropout=0.05,
+            lora_dropout=cfg.lora_dropout,
             bias="none",
             task_type="CAUSAL_LM",
         )

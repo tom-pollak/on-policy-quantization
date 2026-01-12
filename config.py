@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 import torch
-from pydantic import field_validator, model_validator
+from pydantic import computed_field, field_validator, model_validator
 from pydantic_config import BaseConfig
 from torchao.prototype.mx_formats.inference_workflow import NVFP4WeightOnlyConfig
 from torchao.quantization import Int4WeightOnlyConfig, quantize_
@@ -92,8 +92,21 @@ class TrainConfig(SharedConfig):
     # misc
     seed: int = 42
 
-    use_lora: bool = True
+    lora_r: int | None = 32  # None = no LoRA
+    lora_alpha: int | None = None  # None = 2 * lora_r
+    lora_dropout: float = 0.05
     resume: bool = True
+
+    @computed_field
+    @property
+    def use_lora(self) -> bool:
+        return self.lora_r is not None
+
+    @model_validator(mode="after")
+    def set_lora_alpha(self):
+        if self.lora_r is not None and self.lora_alpha is None:
+            self.lora_alpha = 2 * self.lora_r
+        return self
 
     # trainer
     max_steps: int = 1000
@@ -174,6 +187,9 @@ class TrainConfig(SharedConfig):
                 "dataset_name",
                 "mixed_precision",
                 "seed",
+                "lora_r",
+                "lora_alpha",
+                "lora_dropout",
                 "use_lora",
                 "resume",
                 "tags",
